@@ -1,0 +1,62 @@
+hydna-cc
+
+Emanuel Dahlberg
+
+http://github.com/EmanueI
+===================================================================
+
+
+compile lib
+-------------------------------------------------------------------
+To compile the lib:
+
+cd src
+make clean
+make
+
+A file named libhydna.so, should be created in lib/.
+
+
+The lib can also be compiled into debug-mode with:
+
+cd src
+make debug
+
+Information about packets and redirects will be put on stdout.
+
+
+
+compile example
+-------------------------------------------------------------------
+To compile the example:
+
+cd examples
+make clean
+make
+
+
+run example
+-------------------------------------------------------------------
+To run the example:
+
+cd examples
+./hydnatestclient receive
+
+
+And in another shell
+
+cd examples
+./hydnatestclient send
+
+
+This assumes that you have a tcpbin gate running on your
+local machine on the port 7120.
+
+
+
+info
+-------------------------------------------------------------------
+All the headers can be found in include/ with comments.
+
+Look in the Makefile in examples/ to find out how to link the lib.
+
