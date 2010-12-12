@@ -2,8 +2,8 @@
 #
 # @author Emanuel Dahlberg, emanuel.dahlberg@gmail.com
 
-SRCS = hydna.cc hydnaaddr.cc hydnapacket.cc hydnapacketbuffer.cc hydnastreambuf.cc hydnastream.cc
-HDRS = ../include/hydna.h ../include/hydnaaddr.h ../include/hydnapacket.h ../include/hydnapacketbuffer.h ../include/hydnastreambuf.h ../include/hydnastream.h ../include/hydnaaddrexception.h
+SRCS = addr.cc extsocket.cc message.cc openrequest.cc stream.cc streamdata.cc streamsignal.cc
+HDRS = ../include/addr.h ../include/extsocket.h ../include/message.h ../include/openrequest.h ../include/stream.h ../include/streamdata.h ../include/streamsignal.h ../include/streammode.h ../include/error.h ../include/ioerror.h ../include/streamerror.h
 OBJS = $(SRCS:.cc=.o)
 DOBJS= $(SRCS:.cc=.o.DEBUG)
 

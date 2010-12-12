@@ -40,17 +40,17 @@ run example
 To run the example:
 
 cd examples
-./hydnatestclient receive
+./hello-world
 
 
-And in another shell
+And for a signal example
 
 cd examples
-./hydnatestclient send
+./signals
 
 
-This assumes that you have a tcpbin gate running on your
-local machine on the port 7120.
+This assumes that you have a tcp proxy running on your
+local machine on the port 7010.
 
 
 

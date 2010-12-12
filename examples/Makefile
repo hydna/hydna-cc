@@ -2,24 +2,26 @@
 #
 # @author Emanuel Dahlberg, emanuel.dahlberg@gmail.com
 
-SRCS = main.cpp
+SRCS = hello-world.cc signals.cc
 HDRS = 
-OBJS = $(SRCS:.cpp=.o)
+OBJS = $(SRCS:.cc=.o)
 
 CXX = g++
 CXXFLAGS = -g -Wall -ansi -I../include/
 LDFLAGS = -L../lib -lhydna
-TARGET = hydnatestclient
+TARGET = $(OBJS:.o=)
 
 all: $(TARGET)
 
 $(TARGET): $(OBJS)
-	$(CXX) -o $@ $(OBJS) $(LDFLAGS)
 
 $(OBJS): $(HDRS) Makefile
 
-.cpp.o:
+.SUFFIXES: .o
+.cc.o:
 	$(CXX) $(CXXFLAGS) -o $@ -c $<
+.o:
+	$(CXX) -o $@ $< $(LDFLAGS)
 
 clean:
 	rm -f $(TARGET) *.o *~ core
