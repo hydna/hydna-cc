@@ -290,13 +290,22 @@ namespace hydna {
                 offset += n;
             }
 
+            if (n == 0) {
+                destroy(StreamError::fromErrorCode(0x100F));
+                break;
+            }
+
             size = ntohs(*(unsigned short*)&header[0]);
             payload = new char[size];
-
 
             while(offset < size && n != 0) {
                 n = read(m_socketFDS, payload + offset - headerSize, size - offset);
                 offset += n;
+            }
+
+            if (n == 0) {
+                destroy(StreamError::fromErrorCode(0x100F));
+                break;
             }
 
             //m_receiveBuffer.readUnsignedByte(); // Reserved
@@ -445,6 +454,17 @@ namespace hydna {
         Stream* stream;
         StreamSignal* signal;        
 
+        if (addr == 0) {
+            StreamMap::iterator it = m_openStreams.begin();
+
+            for (; it != m_openStreams.end(); it++) {
+                char* payloadCopy = new char[size];
+                memcpy(payloadCopy, payload, size);
+
+                processSignalMessage(it->first, type, payloadCopy, size);
+            }
+        }
+
         stream = m_openStreams[addr];
 
         if (type > 0x0) {
@@ -476,9 +496,15 @@ namespace hydna {
         //    error = StreamError::fromErrorCode(0x01);
         //}
 
+#ifdef HYDNADEBUG
+        cout << "destroy pendingOpenRequests: " << endl;
+#endif
         for (; pending != m_pendingOpenRequests.end(); pending++) {
             pending->second->getStream()->destroy(error);
         }
+#ifdef HYDNADEBUG
+            cout << "destroy waitQueue: " << endl;
+#endif
 
         for (; waitqueue != m_openWaitQueue.end(); waitqueue++) {
             OpenRequestQueue* queue = waitqueue->second;

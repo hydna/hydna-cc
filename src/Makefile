@@ -9,7 +9,7 @@ DOBJS= $(SRCS:.cc=.o.DEBUG)
 
 CXX = g++
 CXXFLAGS = -fPIC -W -Wall -ansi -O3 -I../include/
-DEBUGFLAGS = -DHYDNADEBUG
+DEBUGFLAGS = -g -DHYDNADEBUG
 LDFLAGS = -shared
 SOFILE = ../lib/libhydna.so
 TARGET = target

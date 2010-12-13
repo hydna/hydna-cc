@@ -47,6 +47,8 @@ int main(int argc, const char* argv[]) {
 
             cout << endl;
             break;
+        } else {
+            stream.checkForStreamError();
         }
     }
 }

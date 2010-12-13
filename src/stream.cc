@@ -183,7 +183,7 @@ namespace hydna {
             throw m_error;
     }
 
-    void Stream::destroy(StreamError& error) {
+    void Stream::destroy(StreamError error) {
         m_connected = false;
         m_pendingClose = false;
         m_writable = false;
@@ -198,7 +198,7 @@ namespace hydna {
         //m_addr = NULL;
         m_socket = NULL;
         m_error = error;
-      
+        
         //if (!event) {
         //    dispatchEvent(event);
         //}

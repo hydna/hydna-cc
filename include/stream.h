@@ -123,7 +123,7 @@ namespace hydna {
         void checkForStreamError();
 
         // Internally destroy socket.
-        void destroy(StreamError& error);
+        void destroy(StreamError error);
 
         void addData(StreamData* data);
 
