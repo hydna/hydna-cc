@@ -3,6 +3,7 @@
 
 #include <iostream>
 #include <streambuf>
+#include <pthread.h>
 
 #include "addr.h"
 #include "extsocket.h"
@@ -160,6 +161,8 @@ namespace hydna {
 
         StreamDataQueue m_dataQueue;
         StreamSignalQueue m_signalQueue;
+
+        pthread_mutex_t dataMutex;
     };
 
     typedef std::map<unsigned int, Stream*> StreamMap;

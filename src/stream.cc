@@ -1,3 +1,5 @@
+#include <pthread.h>
+
 #include "addr.h"
 #include "stream.h"
 #include "message.h";
@@ -18,11 +20,11 @@ namespace hydna {
     Stream::Stream() : m_addr(0, 0), m_socket(NULL), m_connected(false), m_pendingClose(false),
                        m_readable(false), m_writable(false), m_signalSupport(false), m_error("", 0x0), m_openRequest(NULL)
     {
-
+        pthread_mutex_init(&dataMutex, NULL);
     }
 
     Stream::~Stream() {
-
+        pthread_mutex_destroy(&dataMutex);
     }
     
     bool Stream::isConnected() const {
@@ -184,6 +186,10 @@ namespace hydna {
     }
 
     void Stream::destroy(StreamError error) {
+        //if (pthread_mutex_lock(&dataMutex) != 0)
+        //    cerr << "Unable to lock mutex" << endl;
+
+
         m_connected = false;
         m_pendingClose = false;
         m_writable = false;
@@ -202,6 +208,8 @@ namespace hydna {
         //if (!event) {
         //    dispatchEvent(event);
         //}
+        //if (pthread_mutex_unlock(&dataMutex) != 0)
+        //    cerr << "Unable to unlock mutex" << endl;
     }
     
     void Stream::internalClose() {

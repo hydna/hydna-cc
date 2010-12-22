@@ -101,6 +101,7 @@ namespace hydna {
         bool m_connecting;
         bool m_connected;
         bool m_handshaked;
+        bool m_destroying;
 
         unsigned int m_zone;
         int m_socketFDS;

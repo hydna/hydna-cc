@@ -37,6 +37,7 @@ namespace hydna {
     ExtSocket::ExtSocket(unsigned int zoneid) : m_connecting(false),
                                                 m_connected(false),
                                                 m_handshaked(false),
+                                                m_destroying(false),
                                                 m_zone(zoneid),
                                                 m_streamRefCount(0) {}
     
@@ -61,7 +62,8 @@ namespace hydna {
 #ifdef HYDNADEBUG
             cout << "no more refs, destroy" << endl;
 #endif
-            destroy(StreamError("", 0x0));
+            if (!m_destroying)
+                destroy(StreamError("", 0x0));
         }
     }
 
@@ -111,6 +113,7 @@ namespace hydna {
       
         if (m_pendingOpenRequests.count(streamcomp) > 0) {
             delete m_pendingOpenRequests[streamcomp];
+            m_pendingOpenRequests.erase(streamcomp);
         
             if (queue && queue->size() > 0)  {
                 m_pendingOpenRequests[streamcomp] = queue->front();
@@ -403,6 +406,7 @@ namespace hydna {
                 // redirected stream.
                 if (respaddr == addr) {
                     delete m_pendingOpenRequests[addr];
+                    m_pendingOpenRequests.erase(addr);
 
                     while (!queue->empty()) {
                         request = queue->front();
@@ -420,6 +424,7 @@ namespace hydna {
 
                 if (queue->empty()) {
                     delete m_openWaitQueue[addr];
+                    m_openWaitQueue.erase(addr);
                 }
 
                 writeBytes(request->getMessage());
@@ -427,6 +432,7 @@ namespace hydna {
             }
         } else {
             delete m_pendingOpenRequests[addr];
+            m_pendingOpenRequests.erase(addr);
         }
     }
 
@@ -484,8 +490,9 @@ namespace hydna {
     }
 
     void ExtSocket::destroy(StreamError error) {
-        OpenRequestMap::iterator pending = m_pendingOpenRequests.begin();
-        OpenRequestQueueMap::iterator waitqueue = m_openWaitQueue.begin();
+        m_destroying = true;
+        OpenRequestMap::iterator pending;
+        OpenRequestQueueMap::iterator waitqueue;
         StreamMap::iterator openstreams = m_openStreams.begin();
 
 #ifdef HYDNADEBUG
@@ -499,6 +506,7 @@ namespace hydna {
 #ifdef HYDNADEBUG
         cout << "destroy pendingOpenRequests: " << endl;
 #endif
+        pending = m_pendingOpenRequests.begin();
         for (; pending != m_pendingOpenRequests.end(); pending++) {
             pending->second->getStream()->destroy(error);
         }
@@ -506,6 +514,7 @@ namespace hydna {
             cout << "destroy waitQueue: " << endl;
 #endif
 
+        waitqueue = m_openWaitQueue.begin();
         for (; waitqueue != m_openWaitQueue.end(); waitqueue++) {
             OpenRequestQueue* queue = waitqueue->second;
 
@@ -514,7 +523,8 @@ namespace hydna {
                 queue->pop();
             }
         }
-
+        
+        openstreams = m_openStreams.begin();
         for (; openstreams != m_openStreams.end(); openstreams++) {
 #ifdef HYDNADEBUG
             cout << "destroy stream of key: " << openstreams->first << endl;
@@ -533,11 +543,13 @@ namespace hydna {
 
         if (availableSockets[m_zone]) {
             delete availableSockets[m_zone];
+            availableSockets.erase(m_zone);
         }
 
 #ifdef HYDNADEBUG
         cout << "destroy: done" << endl;
 #endif
+        m_destroying = false;
     }
 
     bool ExtSocket::writeBytes(Message& message) {

@@ -21,7 +21,7 @@ int main(int argc, const char* argv[]) {
 
     // Öppna en ström, men given adress, första delen är "zonen", egentligen
     // 00112233.tcp.hydna.net. Andra biten är ström-id. Öppnas med read write
-    stream.connect(Addr(0x112233, 0x11221133), StreamMode::READWRITE);
+    stream.connect(Addr(0x1, 0x11221133), StreamMode::READWRITE);
 
     //stream.addEventListener(StreamDateEvent.DATA, function
     //(event:StreamDateEvent)) {
