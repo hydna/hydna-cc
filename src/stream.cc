@@ -21,10 +21,12 @@ namespace hydna {
                        m_readable(false), m_writable(false), m_signalSupport(false), m_error("", 0x0), m_openRequest(NULL)
     {
         pthread_mutex_init(&dataMutex, NULL);
+        pthread_mutex_init(&signalMutex, NULL);
     }
 
     Stream::~Stream() {
         pthread_mutex_destroy(&dataMutex);
+        pthread_mutex_destroy(&signalMutex);
     }
     
     bool Stream::isConnected() const {
@@ -222,12 +224,21 @@ namespace hydna {
     }
 
     void Stream::addData(StreamData* data) {
+        pthread_mutex_lock(&dataMutex);
+
         m_dataQueue.push(data);
+
+        pthread_mutex_unlock(&dataMutex);
     }
 
     StreamData* Stream::popData() {
+        pthread_mutex_lock(&dataMutex);
+
         StreamData* data = m_dataQueue.front();
         m_dataQueue.pop();
+
+        pthread_mutex_unlock(&dataMutex);
+        
         return data;
     }
 
@@ -236,12 +247,21 @@ namespace hydna {
     }
 
     void Stream::addSignal(StreamSignal* signal) {
+        pthread_mutex_lock(&signalMutex);
+
         m_signalQueue.push(signal);
+        
+        pthread_mutex_unlock(&signalMutex);
     }
 
     StreamSignal* Stream::popSignal() {
+        pthread_mutex_lock(&signalMutex);
+        
         StreamSignal* data = m_signalQueue.front();
         m_signalQueue.pop();
+
+        pthread_mutex_unlock(&signalMutex);
+        
         return data;
     }
 

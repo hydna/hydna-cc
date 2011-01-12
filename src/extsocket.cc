@@ -342,7 +342,6 @@ namespace hydna {
 
             offset = 0;
             n = -1;
-            delete[] payload;
         }
     }
 

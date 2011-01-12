@@ -2,7 +2,7 @@
 #
 # @author Emanuel Dahlberg, emanuel.dahlberg@gmail.com
 
-SRCS = hello-world.cc signals.cc
+SRCS = hello-world.cc signals.cc listener.cc
 HDRS = 
 OBJS = $(SRCS:.cc=.o)
 

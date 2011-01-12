@@ -163,6 +163,7 @@ namespace hydna {
         StreamSignalQueue m_signalQueue;
 
         pthread_mutex_t dataMutex;
+        pthread_mutex_t signalMutex;
     };
 
     typedef std::map<unsigned int, Stream*> StreamMap;
