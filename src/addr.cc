@@ -1,3 +1,4 @@
+#include <iomanip>
 #include <sstream>
 
 #include "addr.h"
@@ -9,13 +10,15 @@ namespace hydna {
     Addr::Addr(unsigned int zonecomp,
             unsigned int streamcomp,
             string const &host,
-            int port) : m_port(80) {
+            int port) : m_port(7010) {
         m_zone = zonecomp;
         m_stream = streamcomp;
         m_port = port;
       
         if (host == "") {
             m_host = hexifyComponent(zonecomp) + "." + DEFAULT_HOST;
+        } else {
+            m_host = host;
         }
     }
 
@@ -48,35 +51,49 @@ namespace hydna {
     }
     
     Addr Addr::fromExpr(string const &expr) {
-        cerr << "Addr::fromExpr: NOT IMPLEMENTED YET" << endl;
+        string host = expr;
+        unsigned short port = 7010;
+        unsigned int addr = 1;
+        string token = "";
+        size_t pos;
 
-        return Addr(0, 0);
-        /*
-        var m:*;
-        unsigned int zonecomp;
-        unsigned int streamcomp = 0;
-      
-        cout << "parse addr expr" << endl;
-      
-        if (!expr) {
-            throw Error("Expected String");
+        pos = host.find_last_of("?");
+        if (pos != string::npos) {
+            token = host.substr(pos + 1);
+            host = host.substr(0, pos);
         }
-      
-        m = expr.match(ADDR_EXPR_RE);
-      
-        if (!m) {
-            throw Error("Bad expression");
-        }
-      
-        if (m[1]) {
-            zonecomp = parseInt(m[1], 16);
+
+        pos = host.find("/x");
+        if (pos != string::npos) {
+            istringstream iss(host.substr(pos + 2));
+            host = host.substr(0, pos);
+
+            if ((iss >> setbase(16) >> addr).fail()) {
+               throw Error("Could not read the address \"" + host.substr(pos + 2) + "\""); 
+            }
         } else {
-            zonecomp = parseInt(m[2], 16);
-            streamcomp = parseInt(m[3], 16);
+            pos = host.find_last_of("/");
+            if (pos != string::npos) {
+                istringstream iss(host.substr(pos + 1));
+                host = host.substr(0, pos);
+
+                if ((iss >> addr).fail()) {
+                   throw Error("Could not read the address \"" + host.substr(pos + 1) + "\""); 
+                }
+            }
         }
-      
-        return new Addr(zonecomp, streamcomp);
-        */
+
+        pos = host.find_last_of(":");
+        if (pos != string::npos) {
+            istringstream iss(host.substr(pos + 1));
+            host = host.substr(0, pos);
+
+            if ((iss >> port).fail()) {
+               throw Error("Could not read the port \"" + host.substr(pos + 1) + "\""); 
+            }
+        }
+        
+        return Addr(0, addr, host, port);
     }
     
     Addr Addr::fromByteArray(const char* buffer) {

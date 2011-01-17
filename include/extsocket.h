@@ -18,7 +18,7 @@ namespace hydna {
 
     class ExtSocket { //: public Socket {
 
-        typedef std::map<unsigned int, ExtSocket*> SocketMap;
+        typedef std::map<std::string, ExtSocket*> SocketMap;
 
     public:
         // Return an available socket or create a new one.
@@ -27,7 +27,7 @@ namespace hydna {
         /**
          *  Initializes a new Stream instance
          */
-        ExtSocket(unsigned int zoneid);
+        ExtSocket(std::string const &host);
         
         bool hasHandshaked() const;
         
@@ -103,7 +103,7 @@ namespace hydna {
         bool m_handshaked;
         bool m_destroying;
 
-        unsigned int m_zone;
+        std::string m_host;
         int m_socketFDS;
 
         OpenRequestMap m_pendingOpenRequests;
@@ -124,7 +124,7 @@ namespace hydna {
         static void* listen(void *ptr);
     };
 
-    typedef std::map<unsigned int, ExtSocket*> SocketMap;
+    typedef std::map<std::string, ExtSocket*> SocketMap;
 
     /**
      * A struct with args that 

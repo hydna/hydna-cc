@@ -22,23 +22,23 @@ namespace hydna {
 
     ExtSocket* ExtSocket::getSocket(Addr addr) {
         ExtSocket* socket;
-        unsigned int zone = addr.getZone();
+        string host = addr.getHost();
       
-        if (availableSockets[zone]) {
-            socket = availableSockets[zone];
+        if (availableSockets[host]) {
+            socket = availableSockets[host];
         } else {
-            socket = new ExtSocket(zone);
-            availableSockets[zone] = socket;
+            socket = new ExtSocket(host);
+            availableSockets[host] = socket;
         }
 
         return socket;
     }
 
-    ExtSocket::ExtSocket(unsigned int zoneid) : m_connecting(false),
+    ExtSocket::ExtSocket(string const &host) : m_connecting(false),
                                                 m_connected(false),
                                                 m_handshaked(false),
                                                 m_destroying(false),
-                                                m_zone(zoneid),
+                                                m_host(host),
                                                 m_streamRefCount(0) {}
     
     bool ExtSocket::hasHandshaked() const {
@@ -185,17 +185,35 @@ namespace hydna {
 #ifdef HYDNADEBUG
         cout << "in connect" << endl;
 #endif
+        
+        unsigned int length = m_host.size();
+        unsigned int totalLength = 4 + 1 + length;
+        int n = -1;
+        unsigned int offset = 0;
 
-        char data[8] = "DNA1";
+        if (length < 256) {
+            char data[totalLength];
+            data[0] = 'D';
+            data[1] = 'N';
+            data[2] = 'A';
+            data[3] = '1';
+            data[4] = length;
 
-        *(unsigned int*)&data[4] = htonl(m_zone);
+            for (unsigned int i = 0; i < length; i++) {
+                data[5 + i] = m_host[i];
+            }
+            
 
-        int n = write(m_socketFDS, data, 8);
+            while(offset < totalLength && n != 0) {
+                n = write(m_socketFDS, data + offset, totalLength - offset);
+                offset += n;
+            }
+        }
 
-        if (n == 8) {
-            handshakeHandler();
-        } else {
+        if (n <= 0) {
             destroy(StreamError("Could not send handshake"));
+        } else {
+            handshakeHandler();
         }
     }
 
@@ -540,9 +558,9 @@ namespace hydna {
             m_handshaked = false;
         }
 
-        if (availableSockets[m_zone]) {
-            delete availableSockets[m_zone];
-            availableSockets.erase(m_zone);
+        if (availableSockets[m_host]) {
+            delete availableSockets[m_host];
+            availableSockets.erase(m_host);
         }
 
 #ifdef HYDNADEBUG
