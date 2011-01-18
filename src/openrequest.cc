@@ -1,22 +1,25 @@
-#include "addr.h";
 #include "message.h";
 #include "stream.h";
 
 namespace hydna {
 
     OpenRequest::OpenRequest(Stream* stream,
-                            Addr addr,
+                            unsigned int addr,
                             Message* message) :
                             m_stream(stream),
                             m_addr(addr),
                             m_message(message) {
     }
 
+    OpenRequest::~OpenRequest() {
+        delete m_message;
+    }
+
     Stream* OpenRequest::getStream() {
         return m_stream;
     }
 
-    Addr OpenRequest::getAddr() {
+    unsigned int OpenRequest::getAddr() {
         return m_addr;
     }
 

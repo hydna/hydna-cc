@@ -7,8 +7,6 @@
 typedef std::vector<char> ByteArray;
 
 namespace hydna {
-    class Addr;
-
     class Message { //: public ByteArray {
     public:
         static const int HEADER_SIZE = 0x08;
@@ -19,7 +17,7 @@ namespace hydna {
 
         static const int END = 0x01;
         
-        Message(Addr& addr,
+        Message(unsigned int addr,
                 unsigned int op,
                 unsigned int flag=0,
                 const char* payload=NULL,

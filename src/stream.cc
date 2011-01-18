@@ -1,6 +1,7 @@
 #include <pthread.h>
+#include <iomanip>
+#include <sstream>
 
-#include "addr.h"
 #include "stream.h"
 #include "message.h";
 #include "openrequest.h"
@@ -17,7 +18,7 @@ namespace hydna {
     
     using namespace std;
 
-    Stream::Stream() : m_addr(0, 0), m_socket(NULL), m_connected(false), m_pendingClose(false),
+    Stream::Stream() : m_host(""), m_port(7010), m_addr(1), m_socket(NULL), m_connected(false), m_pendingClose(false),
                        m_readable(false), m_writable(false), m_signalSupport(false), m_error("", 0x0), m_openRequest(NULL)
     {
         pthread_mutex_init(&dataMutex, NULL);
@@ -45,11 +46,7 @@ namespace hydna {
         return !m_pendingClose && m_connected && m_writable;
     }
     
-    Addr Stream::getAddr() const {
-        return m_addr;
-    }
-    
-    void Stream::connect(Addr addr,
+    void Stream::connect(string const &expr,
                  unsigned int mode,
                  const char* token,
                  unsigned int tokenOffset,
@@ -61,8 +58,6 @@ namespace hydna {
         if (m_socket) {
             throw Error("Already connected");
         }
-
-        m_addr = addr;
 
         if (mode == 0x04 ||
                 mode < StreamMode::READ || 
@@ -76,13 +71,64 @@ namespace hydna {
         m_writable = ((m_mode & StreamMode::WRITE) == StreamMode::WRITE);
         m_signalSupport = ((m_mode & 0x04) == 0x04);
 
-        m_socket = ExtSocket::getSocket(m_addr);
+        string host = expr;
+        unsigned short port = 7010;
+        unsigned int addr = 1;
+        string tokens = "";
+        size_t pos;
+
+        pos = host.find_last_of("?");
+        if (pos != string::npos) {
+            tokens = host.substr(pos + 1);
+            host = host.substr(0, pos);
+        }
+
+        pos = host.find("/x");
+        if (pos != string::npos) {
+            istringstream iss(host.substr(pos + 2));
+            host = host.substr(0, pos);
+
+            if ((iss >> setbase(16) >> addr).fail()) {
+               throw Error("Could not read the address \"" + host.substr(pos + 2) + "\""); 
+            }
+        } else {
+            pos = host.find_last_of("/");
+            if (pos != string::npos) {
+                istringstream iss(host.substr(pos + 1));
+                host = host.substr(0, pos);
+
+                if ((iss >> addr).fail()) {
+                   throw Error("Could not read the address \"" + host.substr(pos + 1) + "\""); 
+                }
+            }
+        }
+
+        pos = host.find_last_of(":");
+        if (pos != string::npos) {
+            istringstream iss(host.substr(pos + 1));
+            host = host.substr(0, pos);
+
+            if ((iss >> port).fail()) {
+               throw Error("Could not read the port \"" + host.substr(pos + 1) + "\""); 
+            }
+        }
+        
+        m_host = host;
+        m_port = port;
+        m_addr = addr;
+
+        m_socket = ExtSocket::getSocket(m_host, m_port);
       
         // Ref count
         m_socket->allocStream();
 
-        message = new Message(m_addr, Message::OPEN, mode,
-                            token, tokenOffset, tokenLength);
+        if (token || tokens == "") {
+            message = new Message(m_addr, Message::OPEN, mode,
+                                token, tokenOffset, tokenLength);
+        } else {
+            message = new Message(m_addr, Message::OPEN, mode,
+                                tokens.c_str(), 0, tokens.size());
+        }
       
         request = new OpenRequest(this, m_addr, message);
 
@@ -173,7 +219,7 @@ namespace hydna {
         }
     }
     
-    void Stream::openSuccess(Addr respaddr) {
+    void Stream::openSuccess(unsigned int respaddr) {
         m_addr = respaddr;
         m_connected = true;
       
@@ -198,9 +244,7 @@ namespace hydna {
         m_readable = false;
       
         if (m_socket) {
-            // TODO Look over
-            Addr none(0,0);
-            m_socket->deallocStream(m_connected ? m_addr : none);
+            m_socket->deallocStream(m_connected ? m_addr : 0);
         }
 
         //m_addr = NULL;

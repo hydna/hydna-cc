@@ -1,4 +1,5 @@
 #include <iostream>
+#include <sstream>
 
 #include <sys/types.h>
 #include <sys/socket.h>
@@ -9,7 +10,6 @@
 #include <pthread.h>
 
 #include "extsocket.h"
-#include "addr.h";
 #include "message.h";
 #include "openrequest.h";
 #include "stream.h";
@@ -20,25 +20,32 @@
 namespace hydna {
     using namespace std;
 
-    ExtSocket* ExtSocket::getSocket(Addr addr) {
+    ExtSocket* ExtSocket::getSocket(string const &host, unsigned short port) {
         ExtSocket* socket;
-        string host = addr.getHost();
+        string ports;
+        stringstream out;
+        out << port;
+        ports = out.str();
+        
+        string key = host + ports;
       
-        if (availableSockets[host]) {
-            socket = availableSockets[host];
+        if (availableSockets[key]) {
+            socket = availableSockets[key];
         } else {
-            socket = new ExtSocket(host);
-            availableSockets[host] = socket;
+            socket = new ExtSocket(host, port);
+            availableSockets[key] = socket;
         }
 
         return socket;
     }
 
-    ExtSocket::ExtSocket(string const &host) : m_connecting(false),
+    ExtSocket::ExtSocket(string const &host, unsigned short port) :
+                                                m_connecting(false),
                                                 m_connected(false),
                                                 m_handshaked(false),
                                                 m_destroying(false),
                                                 m_host(host),
+                                                m_port(port),
                                                 m_streamRefCount(0) {}
     
     bool ExtSocket::hasHandshaked() const {
@@ -52,11 +59,11 @@ namespace hydna {
 #endif
     }
     
-    void ExtSocket::deallocStream(Addr& addr) {  
+    void ExtSocket::deallocStream(unsigned int addr) {  
 #ifdef HYDNADEBUG
-        cout << "deallocStream: - > delete stream of addr: " << addr.getStream() << endl;
+        cout << "deallocStream: - > delete stream of addr: " << addr << endl;
 #endif
-        m_openStreams.erase(addr.getStream());
+        m_openStreams.erase(addr);
       
         if (--m_streamRefCount == 0) {
 #ifdef HYDNADEBUG
@@ -68,10 +75,11 @@ namespace hydna {
     }
 
     bool ExtSocket::requestOpen(OpenRequest* request) {
-        unsigned int streamcomp = request->getAddr().getStream();
+        unsigned int streamcomp = request->getAddr();
         OpenRequestQueue* queue;
 
         if (m_openStreams.count(streamcomp) > 0) {
+            delete request;
             return false;
         }
 
@@ -88,8 +96,7 @@ namespace hydna {
             
             if (!m_connecting) {
                 m_connecting = true;
-                string host = request->getAddr().getHost();
-                connectSocket(host, request->getAddr().getPort());
+                connectSocket(m_host, m_port);
             }
         } else {
             writeBytes(request->getMessage());
@@ -100,7 +107,7 @@ namespace hydna {
     }
     
     bool ExtSocket::cancelOpen(OpenRequest* request) {
-        unsigned int streamcomp = request->getAddr().getStream();
+        unsigned int streamcomp = request->getAddr();
         OpenRequestQueue* queue;
         OpenRequestQueue  tmp;
         bool found = false;
@@ -412,7 +419,7 @@ namespace hydna {
 
         m_openStreams[respaddr] = stream;
 
-        stream->openSuccess(Addr(request->getAddr().getZone(), respaddr));
+        stream->openSuccess(respaddr);
 
         if (m_openWaitQueue.count(addr) > 0) {
             OpenRequestQueue* queue = m_openWaitQueue[addr];

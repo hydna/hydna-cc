@@ -9,7 +9,6 @@
 #include "streamerror.h"
 
 namespace hydna {
-    class Addr;
     class Message;
     class Stream;
 
@@ -22,12 +21,12 @@ namespace hydna {
 
     public:
         // Return an available socket or create a new one.
-        static ExtSocket* getSocket(Addr addr);
+        static ExtSocket* getSocket(std::string const &host, unsigned short port);
 
         /**
          *  Initializes a new Stream instance
          */
-        ExtSocket(std::string const &host);
+        ExtSocket(std::string const &host, unsigned short port);
         
         bool hasHandshaked() const;
         
@@ -36,7 +35,7 @@ namespace hydna {
         void allocStream();
         
         // Decrease the reference count
-        void deallocStream(Addr& addr);
+        void deallocStream(unsigned int addr);
 
         // Request to open a stream. Return true if request went well, else
         // false.
@@ -104,6 +103,7 @@ namespace hydna {
         bool m_destroying;
 
         std::string m_host;
+        unsigned short m_port;
         int m_socketFDS;
 
         OpenRequestMap m_pendingOpenRequests;

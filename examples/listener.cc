@@ -1,4 +1,3 @@
-#include <addr.h>
 #include <stream.h>
 #include <streammode.h>
 #include <streamdata.h>
@@ -21,7 +20,7 @@ int main(int argc, const char* argv[]) {
 
     // Öppna en ström, men given adress, första delen är "zonen", egentligen
     // 00112233.tcp.hydna.net. Andra biten är ström-id. Öppnas med read write
-    stream.connect(Addr::fromExpr("localhost/x11221133"), StreamMode::READWRITE);
+    stream.connect("localhost/x11221133", StreamMode::READWRITE);
 
     //stream.addEventListener(StreamDateEvent.DATA, function
     //(event:StreamDateEvent)) {

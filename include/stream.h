@@ -5,7 +5,6 @@
 #include <streambuf>
 #include <pthread.h>
 
-#include "addr.h"
 #include "extsocket.h"
 #include "openrequest.h"
 #include "streamdata.h"
@@ -49,7 +48,7 @@ namespace hydna {
          *
          *  @return {HydnaAddr} the specified HydnaAddr instance.
          */
-        Addr getAddr() const;
+        unsigned int getAddr() const;
         
         /**
          *  Resets the error.
@@ -72,7 +71,7 @@ namespace hydna {
          *  in the application security sandbox. For more information, see the 
          *  "Flash Player Security" chapter in Programming ActionScript 3.0.
          */
-        void connect(Addr addr,
+        void connect(std::string const &expr,
                      unsigned int mode=StreamMode::READ,
                      const char* token=NULL,
                      unsigned int tokenOffset=0,
@@ -119,7 +118,7 @@ namespace hydna {
         void close();
 
         // Internal callback for open success
-        void openSuccess(Addr respaddr);
+        void openSuccess(unsigned int respaddr);
 
         void checkForStreamError();
 
@@ -143,7 +142,9 @@ namespace hydna {
         // Internally close stream
         void internalClose();
 
-        Addr m_addr;
+        std::string m_host;
+        unsigned short m_port;
+        unsigned int m_addr;
         
         ExtSocket* m_socket;
         bool m_connected;

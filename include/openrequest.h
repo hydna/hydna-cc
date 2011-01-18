@@ -5,8 +5,6 @@
 #include <map>
 #include <queue>
 
-#include "addr.h"
-
 namespace hydna {
     class Message;
     class Stream;
@@ -14,12 +12,14 @@ namespace hydna {
     class OpenRequest {
     public:
         OpenRequest(Stream* stream,
-                Addr addr,
+                unsigned int addr,
                 Message* message);
+
+        ~OpenRequest();
 
         Stream* getStream();
 
-        Addr getAddr();
+        unsigned int getAddr();
 
         Message& getMessage();
 
@@ -29,7 +29,7 @@ namespace hydna {
         
     private:
         Stream* m_stream;
-        Addr m_addr;
+        unsigned int m_addr;
         Message* m_message;
         bool m_sent;
 

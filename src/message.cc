@@ -2,12 +2,11 @@
 #include <netinet/in.h>
 
 #include "message.h"
-#include "addr.h"
 
 namespace hydna {
     using namespace std;
 
-    Message::Message(Addr& addr,
+    Message::Message(unsigned int addr,
                         unsigned int op,
                         unsigned int flag,
                         const char* payload,
@@ -21,7 +20,7 @@ namespace hydna {
         bytes.reserve(length + HEADER_SIZE);
         writeShort(length + HEADER_SIZE);
         writeByte(0); // Reserved
-        writeUnsignedInt(addr.getStream());
+        writeUnsignedInt(addr);
         writeByte(op << 4 | flag);
 
         if (payload) {
