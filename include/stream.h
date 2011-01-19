@@ -105,39 +105,39 @@ namespace hydna {
          *
          *  @param value The string to write to the stream.
          */
-        void sendSignal(const char* data,
+        void emitBytes(const char* data,
                                 unsigned int offset=0,
                                 unsigned int length=0,
                                 unsigned int type=0);
 
-        void sendStringSignal(std::string const &value, int type=0);
+        void emitString(std::string const &value, int type=0);
 
         /**
          *  Closes the Stream instance.
          */
         void close();
 
+        void checkForStreamError();
+
+
+        StreamData* popData();
+        bool isDataEmpty();
+
+        StreamSignal* popSignal();
+        bool isSignalEmpty();
+
+        friend class ExtSocket;
+        
+    private:
         // Internal callback for open success
         void openSuccess(unsigned int respaddr);
-
-        void checkForStreamError();
 
         // Internally destroy socket.
         void destroy(StreamError error);
 
         void addData(StreamData* data);
 
-        StreamData* popData();
-
-        bool isDataEmpty();
-
         void addSignal(StreamSignal* signal);
-
-        StreamSignal* popSignal();
-
-        bool isSignalEmpty();
-        
-    private:
         
         // Internally close stream
         void internalClose();

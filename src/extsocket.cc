@@ -161,7 +161,7 @@ namespace hydna {
         struct sockaddr_in server;
 
         if ((m_socketFDS = socket(PF_INET, SOCK_STREAM, IPPROTO_TCP)) == -1) {
-            destroy(StreamError("Socket cound not be created"));
+            destroy(StreamError("Socket could not be created"));
         } else {
             m_connected = true;
 
@@ -172,7 +172,7 @@ namespace hydna {
                 if (setsockopt(m_socketFDS, IPPROTO_TCP,
                                      TCP_NODELAY, (char *) &flag,
                                      sizeof(flag)) < 0) {
-                    std::cerr << "WARNING: Could not set TCP_NODELAY" << std::endl;
+                    cerr << "WARNING: Could not set TCP_NODELAY" << endl;
                 }
                             
                 memcpy(&server.sin_addr, he->h_addr_list[0], he->h_length);
@@ -209,7 +209,6 @@ namespace hydna {
             for (unsigned int i = 0; i < length; i++) {
                 data[5 + i] = m_host[i];
             }
-            
 
             while(offset < totalLength && n != 0) {
                 n = write(m_socketFDS, data + offset, totalLength - offset);
@@ -336,7 +335,7 @@ namespace hydna {
                 break;
             }
 
-            //m_receiveBuffer.readUnsignedByte(); // Reserved
+            // header[2]; Reserved
             addr = ntohl(*(unsigned int*)&header[3]);
             op   = header[7] >> 4;
             flag = header[7] & 0xf;

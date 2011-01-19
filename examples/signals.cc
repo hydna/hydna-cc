@@ -33,7 +33,7 @@ int main(int argc, const char* argv[]) {
     }
 
     // Skriv till strömmen.
-    stream.sendStringSignal("ping");
+    stream.emitString("ping");
 
     for (;;) {
         if (!stream.isSignalEmpty()) {

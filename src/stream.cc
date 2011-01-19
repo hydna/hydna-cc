@@ -174,7 +174,7 @@ namespace hydna {
         writeBytes(value.data(), 0, value.length());
     }
     
-    void Stream::sendSignal(const char* data,
+    void Stream::emitBytes(const char* data,
                             unsigned int offset,
                             unsigned int length,
                             unsigned int type)
@@ -198,8 +198,8 @@ namespace hydna {
             checkForStreamError();
     }
 
-    void Stream::sendStringSignal(string const &value, int type) {
-        sendSignal(value.data(), 0, value.length(), type);
+    void Stream::emitString(string const &value, int type) {
+        emitBytes(value.data(), 0, value.length(), type);
     }
 
     void Stream::close() {
@@ -260,7 +260,7 @@ namespace hydna {
     
     void Stream::internalClose() {
         if (m_socket && m_connected) {
-            sendSignal(NULL, 0, 0, Message::END);
+            emitBytes(NULL, 0, 0, Message::END);
         }
 
         StreamError error("", 0x0);
