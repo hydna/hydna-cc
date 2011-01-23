@@ -44,9 +44,9 @@ namespace hydna {
         bool hasSignalSupport() const;
         
         /**
-         *  Returns the HydnaAddr that this instance listen to.
+         *  Returns the addr that this instance listen to.
          *
-         *  @return {HydnaAddr} the specified HydnaAddr instance.
+         *  @return addr The address.
          */
         unsigned int getAddr() const;
         
@@ -163,8 +163,9 @@ namespace hydna {
         StreamDataQueue m_dataQueue;
         StreamSignalQueue m_signalQueue;
 
-        pthread_mutex_t dataMutex;
-        pthread_mutex_t signalMutex;
+        mutable pthread_mutex_t m_dataMutex;
+        mutable pthread_mutex_t m_signalMutex;
+        mutable pthread_mutex_t m_connectMutex;
     };
 
     typedef std::map<unsigned int, Stream*> StreamMap;

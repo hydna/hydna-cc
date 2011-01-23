@@ -21,29 +21,50 @@ namespace hydna {
     Stream::Stream() : m_host(""), m_port(7010), m_addr(1), m_socket(NULL), m_connected(false), m_pendingClose(false),
                        m_readable(false), m_writable(false), m_signalSupport(false), m_error("", 0x0), m_openRequest(NULL)
     {
-        pthread_mutex_init(&dataMutex, NULL);
-        pthread_mutex_init(&signalMutex, NULL);
+        pthread_mutex_init(&m_dataMutex, NULL);
+        pthread_mutex_init(&m_signalMutex, NULL);
+        pthread_mutex_init(&m_connectMutex, NULL);
     }
 
     Stream::~Stream() {
-        pthread_mutex_destroy(&dataMutex);
-        pthread_mutex_destroy(&signalMutex);
+        pthread_mutex_destroy(&m_dataMutex);
+        pthread_mutex_destroy(&m_signalMutex);
+        pthread_mutex_destroy(&m_connectMutex);
     }
     
     bool Stream::isConnected() const {
-        return m_connected;
+        pthread_mutex_lock(&m_connectMutex);
+        bool result = m_connected;
+        pthread_mutex_unlock(&m_connectMutex);
+        return result;
     }
 
     bool Stream::isReadable() const {
-        return m_connected && m_readable;
+        pthread_mutex_lock(&m_connectMutex);
+        bool result = m_connected && m_readable;
+        pthread_mutex_unlock(&m_connectMutex);
+        return result;
     }
 
     bool Stream::isWritable() const {
-        return m_connected && m_writable;
+        pthread_mutex_lock(&m_connectMutex);
+        bool result = m_connected && m_writable;
+        pthread_mutex_unlock(&m_connectMutex);
+        return result;
     }
 
     bool Stream::hasSignalSupport() const {
-        return !m_pendingClose && m_connected && m_writable;
+        pthread_mutex_lock(&m_connectMutex);
+        bool result = m_connected && m_writable && !m_pendingClose;
+        pthread_mutex_unlock(&m_connectMutex);
+        return result;
+    }
+
+    unsigned int Stream::getAddr() const {
+        pthread_mutex_lock(&m_connectMutex);
+        unsigned int result = m_addr;
+        pthread_mutex_unlock(&m_connectMutex);
+        return result;
     }
     
     void Stream::connect(string const &expr,
@@ -55,9 +76,12 @@ namespace hydna {
         Message* message;
         OpenRequest* request;
       
+        pthread_mutex_lock(&m_connectMutex);
         if (m_socket) {
+            pthread_mutex_unlock(&m_connectMutex);
             throw Error("Already connected");
         }
+        pthread_mutex_unlock(&m_connectMutex);
 
         if (mode == 0x04 ||
                 mode < StreamMode::READ || 
@@ -148,10 +172,14 @@ namespace hydna {
                             unsigned int priority)
     {
         bool result;
+
+        pthread_mutex_lock(&m_connectMutex);
         if (!m_connected || !m_socket) {
+            pthread_mutex_unlock(&m_connectMutex);
             checkForStreamError();
             throw IOError("Stream is not connected");
         }
+        pthread_mutex_unlock(&m_connectMutex);
 
         if (m_mode == StreamMode::READ) {
             throw Error("Stream is not writable");
@@ -164,7 +192,10 @@ namespace hydna {
         Message message(m_addr, Message::DATA, priority,
                                 data, offset, length);
       
-        result = m_socket->writeBytes(message);
+        pthread_mutex_lock(&m_connectMutex);
+        ExtSocket* socket = m_socket;
+        pthread_mutex_unlock(&m_connectMutex);
+        result = socket->writeBytes(message);
 
         if (!result)
             checkForStreamError();
@@ -180,10 +211,14 @@ namespace hydna {
                             unsigned int type)
     {
         bool result;
+
+        pthread_mutex_lock(&m_connectMutex);
         if (!m_connected || !m_socket) {
+            pthread_mutex_unlock(&m_connectMutex);
             checkForStreamError();
             throw IOError("Stream is not connected.");
         }
+        pthread_mutex_unlock(&m_connectMutex);
 
         if ((m_mode & 0x4) == 0x4) {
             throw Error("You do not have permission to send signals");
@@ -192,7 +227,10 @@ namespace hydna {
         Message message(m_addr, Message::SIGNAL, type,
                             data, offset, length);
 
-        result = m_socket->writeBytes(message);
+        pthread_mutex_lock(&m_connectMutex);
+        ExtSocket* socket = m_socket;
+        pthread_mutex_unlock(&m_connectMutex);
+        result = socket->writeBytes(message);
 
         if (!result)
             checkForStreamError();
@@ -203,40 +241,53 @@ namespace hydna {
     }
 
     void Stream::close() {
-        if (!m_socket || m_pendingClose)
+        pthread_mutex_lock(&m_connectMutex);
+        if (!m_socket || m_pendingClose) {
+            pthread_mutex_unlock(&m_connectMutex);
             return;
+        }
       
         if (m_openRequest) {
             if (m_socket->cancelOpen(m_openRequest)) {
                 m_openRequest = NULL;
+                pthread_mutex_unlock(&m_connectMutex);
+                
                 StreamError error("", 0x0);
                 destroy(error);
             } else {
                 m_pendingClose = true;
+                pthread_mutex_unlock(&m_connectMutex);
             }
         } else {
             internalClose();
+            pthread_mutex_unlock(&m_connectMutex);
         }
     }
     
     void Stream::openSuccess(unsigned int respaddr) {
+        pthread_mutex_lock(&m_connectMutex);
         m_addr = respaddr;
         m_connected = true;
       
         if (m_pendingClose) {
+            pthread_mutex_unlock(&m_connectMutex);
             internalClose();
+        } else {
+            pthread_mutex_unlock(&m_connectMutex);
         }
     }
 
     void Stream::checkForStreamError() {
-        if (m_error.getCode() != 0x0)
+        pthread_mutex_lock(&m_connectMutex);
+        if (m_error.getCode() != 0x0) {
+            pthread_mutex_unlock(&m_connectMutex);
             throw m_error;
+        }
+        pthread_mutex_unlock(&m_connectMutex);
     }
 
     void Stream::destroy(StreamError error) {
-        //if (pthread_mutex_lock(&dataMutex) != 0)
-        //    cerr << "Unable to lock mutex" << endl;
-
+        pthread_mutex_lock(&m_connectMutex);
 
         m_connected = false;
         m_pendingClose = false;
@@ -247,20 +298,21 @@ namespace hydna {
             m_socket->deallocStream(m_connected ? m_addr : 0);
         }
 
-        //m_addr = NULL;
+        m_addr = 1;
+        m_openRequest = NULL;
         m_socket = NULL;
         m_error = error;
-        
-        //if (!event) {
-        //    dispatchEvent(event);
-        //}
-        //if (pthread_mutex_unlock(&dataMutex) != 0)
-        //    cerr << "Unable to unlock mutex" << endl;
+
+        pthread_mutex_unlock(&m_connectMutex);
     }
     
     void Stream::internalClose() {
+        pthread_mutex_lock(&m_connectMutex);
         if (m_socket && m_connected) {
+            pthread_mutex_unlock(&m_connectMutex);
             emitBytes(NULL, 0, 0, Message::END);
+        } else {
+            pthread_mutex_unlock(&m_connectMutex);
         }
 
         StreamError error("", 0x0);
@@ -268,49 +320,55 @@ namespace hydna {
     }
 
     void Stream::addData(StreamData* data) {
-        pthread_mutex_lock(&dataMutex);
+        pthread_mutex_lock(&m_dataMutex);
 
         m_dataQueue.push(data);
 
-        pthread_mutex_unlock(&dataMutex);
+        pthread_mutex_unlock(&m_dataMutex);
     }
 
     StreamData* Stream::popData() {
-        pthread_mutex_lock(&dataMutex);
+        pthread_mutex_lock(&m_dataMutex);
 
         StreamData* data = m_dataQueue.front();
         m_dataQueue.pop();
 
-        pthread_mutex_unlock(&dataMutex);
+        pthread_mutex_unlock(&m_dataMutex);
         
         return data;
     }
 
     bool Stream::isDataEmpty() {
-        return m_dataQueue.empty();
+        pthread_mutex_lock(&m_dataMutex);
+        bool result = m_dataQueue.empty();
+        pthread_mutex_unlock(&m_dataMutex);
+        return result;
     }
 
     void Stream::addSignal(StreamSignal* signal) {
-        pthread_mutex_lock(&signalMutex);
+        pthread_mutex_lock(&m_signalMutex);
 
         m_signalQueue.push(signal);
         
-        pthread_mutex_unlock(&signalMutex);
+        pthread_mutex_unlock(&m_signalMutex);
     }
 
     StreamSignal* Stream::popSignal() {
-        pthread_mutex_lock(&signalMutex);
+        pthread_mutex_lock(&m_signalMutex);
         
         StreamSignal* data = m_signalQueue.front();
         m_signalQueue.pop();
 
-        pthread_mutex_unlock(&signalMutex);
+        pthread_mutex_unlock(&m_signalMutex);
         
         return data;
     }
 
     bool Stream::isSignalEmpty() {
-        return m_signalQueue.empty();
+        pthread_mutex_lock(&m_signalMutex);
+        bool result =  m_signalQueue.empty();
+        pthread_mutex_unlock(&m_signalMutex);
+        return result;
     }
 }
 

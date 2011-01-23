@@ -27,6 +27,8 @@ namespace hydna {
          *  Initializes a new Stream instance
          */
         ExtSocket(std::string const &host, unsigned short port);
+
+        ~ExtSocket();
         
         bool hasHandshaked() const;
         
@@ -50,6 +52,8 @@ namespace hydna {
         void writeUnsignedInt(unsigned int value);
         
     private:
+        void checkRefCount();
+
         void connectSocket(std::string &host, int port);
         
         //  Send a handshake packet.
@@ -73,6 +77,11 @@ namespace hydna {
                             const char* payload,
                             int size);
 
+        bool processSignalMessage(Stream* stream,
+                            int type,
+                            const char* payload,
+                            int size);
+
         // Process a signal message.
         void processSignalMessage(unsigned int addr,
                             int type,
@@ -90,12 +99,21 @@ namespace hydna {
         static const int REDIRECT = 1;
         static const int CUSTOM_ERR_CODE = 0xf;
         
-        static SocketMap availableSockets;
+        static SocketMap m_availableSockets;
+        static pthread_mutex_t m_socketMutex;
+
+        pthread_mutex_t m_streamRefMutex;
+        pthread_mutex_t m_destroyingMutex;
+        pthread_mutex_t m_closingMutex;
+        pthread_mutex_t m_openStreamsMutex;
+        pthread_mutex_t m_openWaitMutex;
+        pthread_mutex_t m_pendingMutex;
 
         bool m_connecting;
         bool m_connected;
         bool m_handshaked;
         bool m_destroying;
+        bool m_closing;
 
         std::string m_host;
         unsigned short m_port;

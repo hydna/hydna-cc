@@ -29,12 +29,14 @@ namespace hydna {
         
         string key = host + ports;
       
-        if (availableSockets[key]) {
-            socket = availableSockets[key];
+        pthread_mutex_lock(&m_socketMutex);
+        if (m_availableSockets[key]) {
+            socket = m_availableSockets[key];
         } else {
             socket = new ExtSocket(host, port);
-            availableSockets[key] = socket;
+            m_availableSockets[key] = socket;
         }
+        pthread_mutex_unlock(&m_socketMutex);
 
         return socket;
     }
@@ -44,16 +46,38 @@ namespace hydna {
                                                 m_connected(false),
                                                 m_handshaked(false),
                                                 m_destroying(false),
+                                                m_closing(false),
                                                 m_host(host),
                                                 m_port(port),
-                                                m_streamRefCount(0) {}
+                                                m_streamRefCount(0)
+    {
+        pthread_mutex_init(&m_socketMutex, NULL);
+        pthread_mutex_init(&m_streamRefMutex, NULL);
+        pthread_mutex_init(&m_destroyingMutex, NULL);
+        pthread_mutex_init(&m_closingMutex, NULL);
+        pthread_mutex_init(&m_openStreamsMutex, NULL);
+        pthread_mutex_init(&m_openWaitMutex, NULL);
+        pthread_mutex_init(&m_pendingMutex, NULL);
+    }
+
+    ExtSocket::~ExtSocket() {
+        pthread_mutex_destroy(&m_socketMutex);
+        pthread_mutex_destroy(&m_streamRefMutex);
+        pthread_mutex_destroy(&m_destroyingMutex);
+        pthread_mutex_destroy(&m_closingMutex);
+        pthread_mutex_destroy(&m_openStreamsMutex);
+        pthread_mutex_destroy(&m_openWaitMutex);
+        pthread_mutex_destroy(&m_pendingMutex);
+    }
     
     bool ExtSocket::hasHandshaked() const {
         return m_handshaked;
     }
     
     void ExtSocket::allocStream() {
+        pthread_mutex_lock(&m_streamRefMutex);
         m_streamRefCount++;
+        pthread_mutex_unlock(&m_streamRefMutex);
 #ifdef HYDNADEBUG
         cout << "allocStream: --> " << m_streamRefCount << endl;
 #endif
@@ -63,14 +87,46 @@ namespace hydna {
 #ifdef HYDNADEBUG
         cout << "deallocStream: - > delete stream of addr: " << addr << endl;
 #endif
-        m_openStreams.erase(addr);
+        pthread_mutex_lock(&m_destroyingMutex);
+        pthread_mutex_lock(&m_closingMutex);
+        if (!m_destroying && !m_closing) {
+            pthread_mutex_lock(&m_closingMutex);
+            pthread_mutex_unlock(&m_destroyingMutex);
+
+            pthread_mutex_lock(&m_openStreamsMutex);
+            m_openStreams.erase(addr);
+            pthread_mutex_unlock(&m_openStreamsMutex);
+        } else  {
+            pthread_mutex_lock(&m_closingMutex);
+            pthread_mutex_unlock(&m_destroyingMutex);
+        }
       
-        if (--m_streamRefCount == 0) {
+        pthread_mutex_lock(&m_streamRefMutex);
+        --m_streamRefCount;
+        pthread_mutex_unlock(&m_streamRefMutex);
+
+        checkRefCount();
+    }
+
+    void ExtSocket::checkRefCount() {
+        pthread_mutex_lock(&m_streamRefMutex);
+        if (m_streamRefCount == 0) {
+            pthread_mutex_unlock(&m_streamRefMutex);
 #ifdef HYDNADEBUG
             cout << "no more refs, destroy" << endl;
 #endif
-            if (!m_destroying)
+            pthread_mutex_lock(&m_destroyingMutex);
+            pthread_mutex_lock(&m_closingMutex);
+            if (!m_destroying && !m_closing) {
+                pthread_mutex_lock(&m_closingMutex);
+                pthread_mutex_unlock(&m_destroyingMutex);
                 destroy(StreamError("", 0x0));
+            } else {
+                pthread_mutex_lock(&m_closingMutex);
+                pthread_mutex_unlock(&m_destroyingMutex);
+            }
+        } else {
+            pthread_mutex_unlock(&m_streamRefMutex);
         }
     }
 
@@ -78,12 +134,19 @@ namespace hydna {
         unsigned int streamcomp = request->getAddr();
         OpenRequestQueue* queue;
 
+        pthread_mutex_lock(&m_openStreamsMutex);
         if (m_openStreams.count(streamcomp) > 0) {
+            pthread_mutex_unlock(&m_openStreamsMutex);
             delete request;
             return false;
         }
+        pthread_mutex_unlock(&m_openStreamsMutex);
 
+        pthread_mutex_lock(&m_pendingMutex);
         if (m_pendingOpenRequests.count(streamcomp) > 0) {
+            pthread_mutex_unlock(&m_pendingMutex);
+            
+            pthread_mutex_lock(&m_openWaitMutex);
             queue = m_openWaitQueue[streamcomp];
         
             if (!queue) {
@@ -91,14 +154,18 @@ namespace hydna {
             } 
         
             queue->push(request);
+            pthread_mutex_unlock(&m_openWaitMutex);
         } else if (!m_handshaked) {
             m_pendingOpenRequests[streamcomp] = request;
+            pthread_mutex_unlock(&m_pendingMutex);
             
             if (!m_connecting) {
                 m_connecting = true;
                 connectSocket(m_host, m_port);
             }
         } else {
+            pthread_mutex_unlock(&m_pendingMutex);
+
             writeBytes(request->getMessage());
             request->setSent(true);
         }
@@ -116,8 +183,10 @@ namespace hydna {
             return false;
         }
       
+        pthread_mutex_lock(&m_openWaitMutex);
         queue = m_openWaitQueue[streamcomp];
       
+        pthread_mutex_lock(&m_pendingMutex);
         if (m_pendingOpenRequests.count(streamcomp) > 0) {
             delete m_pendingOpenRequests[streamcomp];
             m_pendingOpenRequests.erase(streamcomp);
@@ -126,12 +195,16 @@ namespace hydna {
                 m_pendingOpenRequests[streamcomp] = queue->front();
                 queue->pop();
             }
-        
+
+            pthread_mutex_unlock(&m_pendingMutex);
+            pthread_mutex_unlock(&m_openWaitMutex);
             return true;
         }
+        pthread_mutex_unlock(&m_pendingMutex);
       
         // Should not happen...
         if (!queue) {
+            pthread_mutex_unlock(&m_openWaitMutex);
             return false;
         }
       
@@ -152,6 +225,7 @@ namespace hydna {
             tmp.pop();
             queue->push(r);
         }
+        pthread_mutex_unlock(&m_openWaitMutex);
       
         return found;
     }
@@ -376,7 +450,10 @@ namespace hydna {
         OpenRequest* request;
         Stream* stream;
         unsigned int respaddr = 0;
+        
+        pthread_mutex_lock(&m_pendingMutex);
         request = m_pendingOpenRequests[addr];
+        pthread_mutex_unlock(&m_pendingMutex);
 
         if (!request) {
             destroy(StreamError::fromErrorCode(0x1003));
@@ -411,15 +488,20 @@ namespace hydna {
         cout << "respaddr: " << respaddr << endl;
 #endif
 
+        pthread_mutex_lock(&m_openStreamsMutex);
         if (m_openStreams.count(respaddr) > 0) {
+            pthread_mutex_unlock(&m_openStreamsMutex);
             destroy(StreamError::fromErrorCode(0x1005));
             return;
         }
 
         m_openStreams[respaddr] = stream;
+        pthread_mutex_unlock(&m_openStreamsMutex);
 
         stream->openSuccess(respaddr);
 
+        pthread_mutex_lock(&m_openWaitMutex);
+        pthread_mutex_lock(&m_pendingMutex);
         if (m_openWaitQueue.count(addr) > 0) {
             OpenRequestQueue* queue = m_openWaitQueue[addr];
             
@@ -457,6 +539,8 @@ namespace hydna {
             delete m_pendingOpenRequests[addr];
             m_pendingOpenRequests.erase(addr);
         }
+        pthread_mutex_unlock(&m_pendingMutex);
+        pthread_mutex_unlock(&m_openWaitMutex);
     }
 
     void ExtSocket::processDataMessage(unsigned int addr,
@@ -465,8 +549,10 @@ namespace hydna {
                                 int size) {
         Stream* stream;
         StreamData* data;
-
+        
+        pthread_mutex_lock(&m_openStreamsMutex);
         stream = m_openStreams[addr];
+        pthread_mutex_unlock(&m_openStreamsMutex);
 
         if (!stream || !payload || size == 0) {
             destroy(StreamError::fromErrorCode(0x1004));
@@ -476,67 +562,113 @@ namespace hydna {
         stream->addData(data);
     }
 
-    void ExtSocket::processSignalMessage(unsigned int addr,
+
+    bool ExtSocket::processSignalMessage(Stream* stream,
                                     int type,
                                     const char* payload,
-                                    int size) {
-        Stream* stream;
-        StreamSignal* signal;        
-
-        if (addr == 0) {
-            StreamMap::iterator it = m_openStreams.begin();
-
-            for (; it != m_openStreams.end(); it++) {
-                char* payloadCopy = new char[size];
-                memcpy(payloadCopy, payload, size);
-
-                processSignalMessage(it->first, type, payloadCopy, size);
-            }
-        }
-
-        stream = m_openStreams[addr];
+                                    int size)
+    {
+        StreamSignal* signal;
 
         if (type > 0x0) {
             StreamError error(StreamError::fromErrorCode(0x20 + type));
             stream->destroy(error);
-            return;
+            return false;
         }
 
         if (!stream || !payload || size == 0) {
             StreamError error(StreamError::fromErrorCode(0x1004));
             stream->destroy(error);
-            return;
+            return false;
         }
 
         signal = new StreamSignal(type, payload, size);
         stream->addSignal(signal);
+        return true;
+    }
+
+    void ExtSocket::processSignalMessage(unsigned int addr,
+                                    int type,
+                                    const char* payload,
+                                    int size)
+    {
+        if (addr == 0) {
+            pthread_mutex_lock(&m_openStreamsMutex);
+            StreamMap::iterator it = m_openStreams.begin();
+            bool destroying = false;
+
+            if (type > 0x0 || !payload || size == 0) {
+                destroying = true;
+
+                pthread_mutex_lock(&m_closingMutex);
+                m_closing = true;
+                pthread_mutex_unlock(&m_closingMutex);
+            }
+
+            while (it != m_openStreams.end()) {
+                char* payloadCopy = new char[size];
+                memcpy(payloadCopy, payload, size);
+
+                if (!destroying && !it->second) {
+                    destroying = true;
+
+                    pthread_mutex_lock(&m_closingMutex);
+                    m_closing = true;
+                    pthread_mutex_unlock(&m_closingMutex);
+                }
+
+                if (processSignalMessage(it->second, type, payloadCopy, size)) {
+                    ++it;
+                } else {
+                    m_openStreams.erase(it++);
+                }
+            }
+
+            pthread_mutex_unlock(&m_openStreamsMutex);
+
+            if (destroying) {
+                pthread_mutex_lock(&m_closingMutex);
+                m_closing = false;
+                pthread_mutex_unlock(&m_closingMutex);
+
+                checkRefCount();
+            }
+        } else {
+            pthread_mutex_lock(&m_openStreamsMutex);
+            processSignalMessage(m_openStreams[addr], type, payload, size);
+            pthread_mutex_unlock(&m_openStreamsMutex);
+        }
     }
 
     void ExtSocket::destroy(StreamError error) {
+        pthread_mutex_lock(&m_destroyingMutex);
         m_destroying = true;
+        pthread_mutex_unlock(&m_destroyingMutex);
+
         OpenRequestMap::iterator pending;
         OpenRequestQueueMap::iterator waitqueue;
-        StreamMap::iterator openstreams = m_openStreams.begin();
+        StreamMap::iterator openstreams;
 
 #ifdef HYDNADEBUG
         cout << "in destroy " << error.what() << endl;
 #endif
 
-        //if (!error) {
-        //    error = StreamError::fromErrorCode(0x01);
-        //}
-
 #ifdef HYDNADEBUG
         cout << "destroy pendingOpenRequests: " << endl;
 #endif
+        pthread_mutex_lock(&m_pendingMutex);
         pending = m_pendingOpenRequests.begin();
         for (; pending != m_pendingOpenRequests.end(); pending++) {
             pending->second->getStream()->destroy(error);
         }
+        m_pendingOpenRequests.clear();
+        pthread_mutex_unlock(&m_pendingMutex);
+
 #ifdef HYDNADEBUG
             cout << "destroy waitQueue: " << endl;
 #endif
 
+        pthread_mutex_lock(&m_openWaitMutex);
         waitqueue = m_openWaitQueue.begin();
         for (; waitqueue != m_openWaitQueue.end(); waitqueue++) {
             OpenRequestQueue* queue = waitqueue->second;
@@ -546,7 +678,10 @@ namespace hydna {
                 queue->pop();
             }
         }
+        m_openWaitQueue.clear();
+        pthread_mutex_unlock(&m_openWaitMutex);
         
+        pthread_mutex_lock(&m_openStreamsMutex);
         openstreams = m_openStreams.begin();
         for (; openstreams != m_openStreams.end(); openstreams++) {
 #ifdef HYDNADEBUG
@@ -554,6 +689,8 @@ namespace hydna {
 #endif
             openstreams->second->destroy(error);
         }				
+        m_openStreams.clear();
+        pthread_mutex_unlock(&m_openStreamsMutex);
 
         if (m_connected) {
 #ifdef HYDNADEBUG
@@ -564,15 +701,20 @@ namespace hydna {
             m_handshaked = false;
         }
 
-        if (availableSockets[m_host]) {
-            delete availableSockets[m_host];
-            availableSockets.erase(m_host);
+        pthread_mutex_lock(&m_socketMutex);
+        if (m_availableSockets[m_host]) {
+            delete m_availableSockets[m_host];
+            m_availableSockets.erase(m_host);
         }
+        pthread_mutex_unlock(&m_socketMutex);
 
 #ifdef HYDNADEBUG
         cout << "destroy: done" << endl;
 #endif
+        
+        pthread_mutex_unlock(&m_destroyingMutex);
         m_destroying = false;
+        pthread_mutex_unlock(&m_destroyingMutex);
     }
 
     bool ExtSocket::writeBytes(Message& message) {
@@ -596,6 +738,7 @@ namespace hydna {
         return false;
     }
 
-    SocketMap ExtSocket::availableSockets = SocketMap();
+    SocketMap ExtSocket::m_availableSockets = SocketMap();
+    pthread_mutex_t ExtSocket::m_socketMutex;
 }
 
