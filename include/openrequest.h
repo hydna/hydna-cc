@@ -6,14 +6,14 @@
 #include <queue>
 
 namespace hydna {
-    class Message;
+    class Packet;
     class Stream;
 
     class OpenRequest {
     public:
         OpenRequest(Stream* stream,
                 unsigned int addr,
-                Message* message);
+                Packet* packet);
 
         ~OpenRequest();
 
@@ -21,7 +21,7 @@ namespace hydna {
 
         unsigned int getAddr();
 
-        Message& getMessage();
+        Packet& getPacket();
 
         bool isSent() const;
 
@@ -30,7 +30,7 @@ namespace hydna {
     private:
         Stream* m_stream;
         unsigned int m_addr;
-        Message* m_message;
+        Packet* m_packet;
         bool m_sent;
 
     };

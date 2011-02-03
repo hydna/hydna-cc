@@ -3,7 +3,7 @@
 #include <sstream>
 
 #include "stream.h"
-#include "message.h";
+#include "packet.h";
 #include "openrequest.h"
 #include "streamdata.h"
 #include "streamsignal.h"
@@ -73,7 +73,7 @@ namespace hydna {
                  unsigned int tokenOffset,
                  unsigned int tokenLength)
     {
-        Message* message;
+        Packet* packet;
         OpenRequest* request;
       
         pthread_mutex_lock(&m_connectMutex);
@@ -147,14 +147,14 @@ namespace hydna {
         m_socket->allocStream();
 
         if (token || tokens == "") {
-            message = new Message(m_addr, Message::OPEN, mode,
+            packet = new Packet(m_addr, Packet::OPEN, mode,
                                 token, tokenOffset, tokenLength);
         } else {
-            message = new Message(m_addr, Message::OPEN, mode,
+            packet = new Packet(m_addr, Packet::OPEN, mode,
                                 tokens.c_str(), 0, tokens.size());
         }
       
-        request = new OpenRequest(this, m_addr, message);
+        request = new OpenRequest(this, m_addr, packet);
 
         m_error = StreamError("", 0x0);
       
@@ -189,13 +189,13 @@ namespace hydna {
             throw RangeError("Priority must be between 1 - 3");
         }
 
-        Message message(m_addr, Message::DATA, priority,
+        Packet packet(m_addr, Packet::DATA, priority,
                                 data, offset, length);
       
         pthread_mutex_lock(&m_connectMutex);
         ExtSocket* socket = m_socket;
         pthread_mutex_unlock(&m_connectMutex);
-        result = socket->writeBytes(message);
+        result = socket->writeBytes(packet);
 
         if (!result)
             checkForStreamError();
@@ -224,13 +224,13 @@ namespace hydna {
             throw Error("You do not have permission to send signals");
         }
 
-        Message message(m_addr, Message::SIGNAL, type,
+        Packet packet(m_addr, Packet::SIGNAL, type,
                             data, offset, length);
 
         pthread_mutex_lock(&m_connectMutex);
         ExtSocket* socket = m_socket;
         pthread_mutex_unlock(&m_connectMutex);
-        result = socket->writeBytes(message);
+        result = socket->writeBytes(packet);
 
         if (!result)
             checkForStreamError();
@@ -310,7 +310,7 @@ namespace hydna {
         pthread_mutex_lock(&m_connectMutex);
         if (m_socket && m_connected) {
             pthread_mutex_unlock(&m_connectMutex);
-            emitBytes(NULL, 0, 0, Message::END);
+            emitBytes(NULL, 0, 0, Packet::SIG_END);
         } else {
             pthread_mutex_unlock(&m_connectMutex);
         }

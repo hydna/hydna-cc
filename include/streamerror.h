@@ -2,6 +2,7 @@
 #define HYDNA_STREAMERROR_H
 
 #include "ioerror.h"
+#include "packet.h"
 
 namespace hydna {
 
@@ -11,70 +12,111 @@ namespace hydna {
                 unsigned int code=0xFFFF,
                 std::string const &name="StreamError") : IOError(what, name), m_code(code) {}
 
-        static StreamError fromErrorCode(unsigned int code, std::string const &errorMessage="") {
-            std::string message = "";
+        static StreamError fromHandshakeError(int flag) {
+            int code = 0xFFFF;
+            std::string msg;
 
-            switch (code) {
-                // Socket related error codes (also related to handshakes)
-                case 0x02: message = "Bad message format"; break;
-                case 0x03: message = "Multiple ACK request to same addr"; break;
-                case 0x04: message = "Invalid operator"; break;
-                case 0x05: message = "Invalid operator flag"; break;
-                case 0x06: message = "Stream is already open"; break;
-                case 0x07: message = "Stream is not writable"; break;
-                case 0x08: message = "Stream is not available"; break;
-                case 0x09: message = "Server is busy"; break;
-                case 0x0A: message = "Bad handshake packet"; break;
-                case 0x0F: message = "Invalid domain addr"; break;
-                
-                // Handshake related error codes
-                case 0x12: message = "Server is busy"; break;
-                case 0x13: message = "Bad format"; break;
-                case 0x14: message = "Invalid Zone"; break;
-                
-                // OPENRESP releated error codes
-                case 0x108: message = "Stream is not available"; break;
-                case 0x109: message = "Mode not allowed"; break;
-                case 0x10a: message = "Protocol not allowed"; break;
-                case 0x10b: message = "Hostname not allowed"; break;
-                case 0x10c: message = "Authentication failure"; break;
-                case 0x10d: message = "Service not available"; break;
-                case 0x10e: message = "Service error"; break;
-                case 0x10f: message = "Other error"; break;
-
-
-                // SIGNAL related error codes
-                case 0x201: message = "Close stream"; break;
-                case 0x20a: message = "Client sent ill-formatted data"; break;
-                case 0x20b: message = "Operation Error"; break;
-                case 0x20c: message = "Limit reached (messages/second, message size etc)"; break;
-                case 0x20d: message = "Internal server error"; break;
-                case 0x20e: message = "A violation has occurred"; break;
-                case 0x20f: message = "Other error"; break;
-
-                // Stream releated error end codes
-                case 0x111: message = "End of transmission"; break;
-                case 0x11F: message = ""; break; // User-defined.
-                            
-                
-                // Library specific error codes
-                case 0x1001: message = "Server responed with bad handshake"; break;
-                case 0x1002: message = "Server sent malformed packet"; break;
-                case 0x1003: message = "Server sent invalid open response"; break;
-                case 0x1004: message = "Server sent to non-open stream"; break;
-                case 0x1005: message = "Server redirected to open stream"; break;
-                case 0x1006: message = "Security error"; break;
-                case 0x1007: message = "Stream already open."; break;
-                case 0x100F: message = "Disconnected from server"; break;
-                default: message = "Unknown Error"; break;
+            switch (flag) {
+                case Packet::HANDSHAKE_UNKNOWN:
+                    code = Packet::HANDSHAKE_UNKNOWN;
+                    msg = "Unknown handshake error";
+                    break;
+                case Packet::HANDSHAKE_SERVER_BUSY:
+                    msg = "Handshake failed, server is busy";
+                    break;
+                case Packet::HANDSHAKE_BADFORMAT:
+                    msg = "Handshake failed, bad format sent by client";
+                    break;
+                case Packet::HANDSHAKE_HOSTNAME:
+                    msg = "Handshake failed, invalid hostname";
+                    break;
+                case Packet::HANDSHAKE_PROTOCOL:
+                    msg = "Handshake failed, protocol not allowed";
+                    break;
+                case Packet::HANDSHAKE_SERVER_ERROR:
+                    msg = "Handshake failed, server error";
+                    break;
             }
 
-            if (errorMessage != "")
-                return StreamError(errorMessage);
-            else
-                return StreamError(message);
+            return StreamError(msg, code);
         }
 
+        static StreamError fromOpenError(int flag, std::string data) {
+            int code = flag;
+            std::string msg;
+
+            switch (code) {
+                case Packet::OPEN_FAIL_NA:
+                    msg = "Failed to open stream, not available";
+                    break;
+                case Packet::OPEN_FAIL_MODE:
+                    msg = "Not allowed to open stream with specified mode";
+                    break;
+                case Packet::OPEN_FAIL_PROTOCOL:
+                    msg = "Not allowed to open stream with specified protocol";
+                    break;
+                case Packet::OPEN_FAIL_HOST:
+                    msg = "Not allowed to open stream from host";
+                    break;
+                case Packet::OPEN_FAIL_AUTH:
+                    msg = "Not allowed to open stream with credentials";
+                    break;
+                case Packet::OPEN_FAIL_SERVICE_NA:
+                    msg = "Failed to open stream, service is not available";
+                    break;
+                case Packet::OPEN_FAIL_SERVICE_ERR:
+                    msg = "Failed to open stream, service error";
+                    break;
+
+                default:
+                case Packet::OPEN_FAIL_OTHER:
+                    code = Packet::OPEN_FAIL_OTHER;
+                    msg = "Failed to open stream, unknown error";
+                    break;
+            }
+
+            if (data != "" || data.length() != 0) {
+                msg = data;
+            }
+
+            return StreamError(msg, code);
+        }
+
+        static StreamError fromSigError(int flag, std::string data) {
+            int code = flag;
+            std::string msg;
+
+            switch (code) {
+                case Packet::SIG_ERR_PROTOCOL:
+                    msg = "Protocol error";
+                    break;
+                case Packet::SIG_ERR_OPERATION:
+                    msg = "Operational error";
+                    break;
+                case Packet::SIG_ERR_LIMIT:
+                    msg = "Limit error";
+                    break;
+                case Packet::SIG_ERR_SERVER:
+                    msg = "Server error";
+                    break;
+                case Packet::SIG_ERR_VIOLATION:
+                    msg = "Violation error";
+                    break;
+
+                default:
+                case Packet::SIG_ERR_OTHER:
+                    code = Packet::SIG_ERR_OTHER;
+                    msg = "Unknown error";
+                    break;
+            }
+
+            if (data != "" || data.length() != 0) {
+                msg = data;
+            }
+
+            return StreamError(msg, code);
+        }
+        
         virtual ~StreamError() throw() {}
 
         unsigned int getCode() {

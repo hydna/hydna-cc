@@ -1,18 +1,18 @@
-#include "message.h";
+#include "packet.h";
 #include "stream.h";
 
 namespace hydna {
 
     OpenRequest::OpenRequest(Stream* stream,
                             unsigned int addr,
-                            Message* message) :
+                            Packet* packet) :
                             m_stream(stream),
                             m_addr(addr),
-                            m_message(message) {
+                            m_packet(packet) {
     }
 
     OpenRequest::~OpenRequest() {
-        delete m_message;
+        delete m_packet;
     }
 
     Stream* OpenRequest::getStream() {
@@ -23,8 +23,8 @@ namespace hydna {
         return m_addr;
     }
 
-    Message& OpenRequest::getMessage() {
-        return *m_message;
+    Packet& OpenRequest::getPacket() {
+        return *m_packet;
     }
 
     bool OpenRequest::isSent() const {

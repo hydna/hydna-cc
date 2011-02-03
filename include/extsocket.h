@@ -9,7 +9,7 @@
 #include "streamerror.h"
 
 namespace hydna {
-    class Message;
+    class Packet;
     class Stream;
 
     typedef std::map<unsigned int, Stream*> StreamMap;
@@ -47,7 +47,7 @@ namespace hydna {
         // false.
         bool cancelOpen(OpenRequest* request);
         
-        bool writeBytes(Message& message);
+        bool writeBytes(Packet& packet);
         void writeMultiByte(std::string& value);
         void writeUnsignedInt(unsigned int value);
         
@@ -65,26 +65,26 @@ namespace hydna {
         // Handles all incomming data.
         void receiveHandler();
 
-        // Process a open response message.
-        void processOpenMessage(unsigned int addr,
+        // Process a open response packet.
+        void processOpenPacket(unsigned int addr,
                                 int errcode,
                                 const char* payload,
                                 int size);
 
-        // Process a data message.
-        void processDataMessage(unsigned int addr,
+        // Process a data packet.
+        void processDataPacket(unsigned int addr,
                             int priority,
                             const char* payload,
                             int size);
 
-        bool processSignalMessage(Stream* stream,
-                            int type,
+        bool processSignalPacket(Stream* stream,
+                            int flag,
                             const char* payload,
                             int size);
 
-        // Process a signal message.
-        void processSignalMessage(unsigned int addr,
-                            int type,
+        // Process a signal packet.
+        void processSignalPacket(unsigned int addr,
+                            int flag,
                             const char* payload,
                             int size);
 
@@ -95,10 +95,6 @@ namespace hydna {
         static const int HANDSHAKE_SIZE = 9;
         static const int HANDSHAKE_RESP_SIZE = 5;
 
-        static const int SUCCESS = 0;
-        static const int REDIRECT = 1;
-        static const int CUSTOM_ERR_CODE = 0xf;
-        
         static SocketMap m_availableSockets;
         static pthread_mutex_t m_socketMutex;
 
