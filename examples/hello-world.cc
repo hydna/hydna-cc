@@ -50,5 +50,6 @@ int main(int argc, const char* argv[]) {
             stream.checkForStreamError();
         }
     }
+    stream.close();
 }
 

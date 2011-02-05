@@ -1,17 +1,18 @@
 # Makefile
 #
-# @author Emanuel Dahlberg, emanuel.dahlberg@gmail.com
+# @author Emanuel Dahlberg, http://github.com/EmanueI
 
 SRCS = extsocket.cc packet.cc openrequest.cc stream.cc streamdata.cc streamsignal.cc
 HDRS = ../include/extsocket.h ../include/packet.h ../include/openrequest.h ../include/stream.h ../include/streamdata.h ../include/streamsignal.h ../include/streammode.h ../include/error.h ../include/ioerror.h ../include/streamerror.h
 OBJS = $(SRCS:.cc=.o)
-DOBJS= $(SRCS:.cc=.o.DEBUG)
+DOBJS= $(SRCS:.cc=DEBUG.o)
 
 CXX = g++
 CXXFLAGS = -fPIC -W -Wall -ansi -Os -I../include/
 DEBUGFLAGS = -g -DHYDNADEBUG -O0
 LDFLAGS = -shared
 SOFILE = ../lib/libhydna.so
+DEBUGSOFILE = ../lib/libhydnad.so
 TARGET = target
 DEBUGTARGET = debugtarget
 
@@ -23,16 +24,16 @@ $(TARGET): $(OBJS)
 	$(CXX) -o $(SOFILE) $(OBJS) $(LDFLAGS)
 
 $(DEBUGTARGET): $(DOBJS)
-	$(CXX) -o $(SOFILE) $(DOBJS) $(LDFLAGS)
+	$(CXX) -o $(DEBUGSOFILE) $(DOBJS) $(LDFLAGS)
 
 $(OBJS): $(HDRS) Makefile
 
 $(DOBJS): $(HDRS) Makefile
 
-.SUFFIXES: .cc .o.DEBUG
+.SUFFIXES: .cc DEBUG.o
 .cc.o:
 	$(CXX) $(CXXFLAGS) -o $@ -c $<
-.cc.o.DEBUG:
+.ccDEBUG.o:
 	$(CXX) $(CXXFLAGS) $(DEBUGFLAGS) -o $@ -c $<
 
 clean:

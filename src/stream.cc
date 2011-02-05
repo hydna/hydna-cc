@@ -259,8 +259,8 @@ namespace hydna {
                 pthread_mutex_unlock(&m_connectMutex);
             }
         } else {
-            internalClose();
             pthread_mutex_unlock(&m_connectMutex);
+            internalClose();
         }
     }
     
@@ -268,6 +268,7 @@ namespace hydna {
         pthread_mutex_lock(&m_connectMutex);
         m_addr = respaddr;
         m_connected = true;
+        m_openRequest = NULL;
       
         if (m_pendingClose) {
             pthread_mutex_unlock(&m_connectMutex);
@@ -289,7 +290,6 @@ namespace hydna {
     void Stream::destroy(StreamError error) {
         pthread_mutex_lock(&m_connectMutex);
 
-        m_connected = false;
         m_pendingClose = false;
         m_writable = false;
         m_readable = false;
@@ -298,6 +298,7 @@ namespace hydna {
             m_socket->deallocStream(m_connected ? m_addr : 0);
         }
 
+        m_connected = false;
         m_addr = 1;
         m_openRequest = NULL;
         m_socket = NULL;
@@ -310,6 +311,9 @@ namespace hydna {
         pthread_mutex_lock(&m_connectMutex);
         if (m_socket && m_connected) {
             pthread_mutex_unlock(&m_connectMutex);
+#ifdef HYDNADEBUG
+            cout << "Stream: Sending close signal" << endl;
+#endif
             emitBytes(NULL, 0, 0, Packet::SIG_END);
         } else {
             pthread_mutex_unlock(&m_connectMutex);

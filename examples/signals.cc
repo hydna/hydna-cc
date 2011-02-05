@@ -48,5 +48,6 @@ int main(int argc, const char* argv[]) {
             break;
         }
     }
+    stream.close();
 }
 
