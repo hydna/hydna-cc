@@ -47,6 +47,7 @@ namespace hydna {
                                                 m_handshaked(false),
                                                 m_destroying(false),
                                                 m_closing(false),
+                                                m_listening(false),
                                                 m_host(host),
                                                 m_port(port),
                                                 m_streamRefCount(0)
@@ -58,6 +59,7 @@ namespace hydna {
         pthread_mutex_init(&m_openStreamsMutex, NULL);
         pthread_mutex_init(&m_openWaitMutex, NULL);
         pthread_mutex_init(&m_pendingMutex, NULL);
+        pthread_mutex_init(&m_listeningMutex, NULL);
     }
 
     ExtSocket::~ExtSocket() {
@@ -68,6 +70,7 @@ namespace hydna {
         pthread_mutex_destroy(&m_openStreamsMutex);
         pthread_mutex_destroy(&m_openWaitMutex);
         pthread_mutex_destroy(&m_pendingMutex);
+        pthread_mutex_destroy(&m_listeningMutex);
     }
     
     bool ExtSocket::hasHandshaked() const {
@@ -414,6 +417,10 @@ namespace hydna {
         unsigned int offset = 0;
         int n = 1;
 
+        pthread_mutex_lock(&m_listeningMutex);
+        m_listening = true;
+        pthread_mutex_unlock(&m_listeningMutex);
+
         for (;;) {
             while(offset < headerSize && n > 0) {
                 n = read(m_socketFDS, header + offset, headerSize - offset);
@@ -421,7 +428,12 @@ namespace hydna {
             }
 
             if (n <= 0) {
-                destroy(StreamError("Could not read from the socket"));
+                pthread_mutex_lock(&m_listeningMutex);
+                if (m_listening) {
+                    pthread_mutex_unlock(&m_listeningMutex);
+                    destroy(StreamError("Could not read from the socket"));
+                }
+                pthread_mutex_unlock(&m_listeningMutex);
                 break;
             }
 
@@ -434,7 +446,12 @@ namespace hydna {
             }
 
             if (n <= 0) {
-                destroy(StreamError("Could not read from the socket"));
+                pthread_mutex_lock(&m_listeningMutex);
+                if (m_listening) {
+                    pthread_mutex_unlock(&m_listeningMutex);
+                    destroy(StreamError("Could not read from the socket"));
+                }
+                pthread_mutex_unlock(&m_listeningMutex);
                 break;
             }
 
@@ -488,7 +505,7 @@ namespace hydna {
         pthread_mutex_unlock(&m_pendingMutex);
 
         if (!request) {
-            destroy(StreamError("Server sent invalid open packet"));
+            destroy(StreamError("The server sent a invalid open packet"));
             return;
         }
 
@@ -498,25 +515,34 @@ namespace hydna {
             respaddr = addr;
         } else if (errcode == Packet::OPEN_REDIRECT) {
             if (!payload || size < 4) {
-                destroy(StreamError("Expected redirect addr from server"));
+                destroy(StreamError("Expected redirect addr from the server"));
                 return;
             }
 
             respaddr = ntohl(*(unsigned int*)&payload[0]);
 
 #ifdef HYDNADEBUG
-            cout << "ExtSocket: Redirected:" << endl;
-            cout << "ExtSocket:       From: " << addr << endl;
-            cout << "ExtSocket:         To: " << respaddr << endl;
+            cout << "ExtSocket: Redirected from " << addr << endl;
+            cout << "ExtSocket:              to " << respaddr << endl;
 #endif
         } else {
+            pthread_mutex_lock(&m_pendingMutex);
+            delete m_pendingOpenRequests[addr];
+            m_pendingOpenRequests.erase(addr);
+            pthread_mutex_unlock(&m_pendingMutex);
+
             string m = "";
             if (payload && size > 0) {
                 m = string(payload, size);
             }
 
+#ifdef HYDNADEBUG
+            cout << "ExtSocket: The server rejected the open request, errorcode " << errcode << endl;
+#endif
+
             StreamError error = StreamError::fromOpenError(errcode, m);
             stream->destroy(error);
+            return;
         }
 
 
@@ -749,6 +775,9 @@ namespace hydna {
 #ifdef HYDNADEBUG
             cout << "ExtSocket: Closing socket" << endl;
 #endif
+            pthread_mutex_lock(&m_listeningMutex);
+            m_listening = false;
+            pthread_mutex_unlock(&m_listeningMutex);
             close(m_socketFDS);
             m_connected = false;
             m_handshaked = false;

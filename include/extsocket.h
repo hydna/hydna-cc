@@ -104,12 +104,14 @@ namespace hydna {
         pthread_mutex_t m_openStreamsMutex;
         pthread_mutex_t m_openWaitMutex;
         pthread_mutex_t m_pendingMutex;
+        pthread_mutex_t m_listeningMutex;
 
         bool m_connecting;
         bool m_connected;
         bool m_handshaked;
         bool m_destroying;
         bool m_closing;
+        bool m_listening;
 
         std::string m_host;
         unsigned short m_port;

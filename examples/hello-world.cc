@@ -29,6 +29,7 @@ int main(int argc, const char* argv[]) {
     //}
 
     while(!stream.isConnected()) {
+        stream.checkForStreamError();
         sleep(1);
     }
 

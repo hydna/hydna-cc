@@ -29,6 +29,7 @@ int main(int argc, const char* argv[]) {
     //}
 
     while(!stream.isConnected()) {
+        stream.checkForStreamError();
         sleep(1);
     }
 
@@ -46,6 +47,8 @@ int main(int argc, const char* argv[]) {
 
             cout << endl;
             break;
+        } else {
+            stream.checkForStreamError();
         }
     }
     stream.close();

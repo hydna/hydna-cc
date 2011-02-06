@@ -47,16 +47,17 @@ int main(int argc, const char* argv[]) {
 
         Stream stream;
         stream.connect("localhost/x11221133", StreamMode::READWRITE);
+
+        while(!stream.isConnected()) {
+            stream.checkForStreamError();
+            sleep(1);
+        }
         
         int time = 0;
 
         if (arg.compare("receive") == 0) {
             string cs;
             cout << "Receiving from x11221133" << endl;
-
-            while(!stream.isConnected()) {
-                sleep(1);
-            }
 
             for(;;) {
                 if (!stream.isDataEmpty()) {
@@ -80,10 +81,6 @@ int main(int argc, const char* argv[]) {
             }
         } else if (arg.compare("send") == 0) {
             cout << "Sending " << NO_BROADCASTS << " packets to x11221133" << endl;
-
-            while(!stream.isConnected()) {
-                sleep(1);
-            }
 
             time = getmicrosec();
 
