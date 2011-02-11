@@ -37,4 +37,4 @@ $(DOBJS): $(HDRS) Makefile
 	$(CXX) $(CXXFLAGS) $(DEBUGFLAGS) -o $@ -c $<
 
 clean:
-	rm -f $(TARGET) $(DEBUGTARGET) *.o *.o.DEBUG *~ core
+	rm -f $(TARGET) $(DEBUGTARGET) *.o *~ core

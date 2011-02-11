@@ -610,15 +610,22 @@ namespace hydna {
                                 int priority,
                                 const char* payload,
                                 int size) {
-        Stream* stream;
+        Stream* stream = NULL;
         StreamData* data;
         
         pthread_mutex_lock(&m_openStreamsMutex);
-        stream = m_openStreams[addr];
+        if (m_openStreams.count(addr) > 0)
+            stream = m_openStreams[addr];
         pthread_mutex_unlock(&m_openStreamsMutex);
 
-        if (!stream || !payload || size == 0) {
+        if (!stream) {
+            destroy(StreamError("No stream was available to take care of the data received"));
+            return;
+        }
+
+        if (!payload || size == 0) {
             destroy(StreamError("Zero data packet received"));
+            return;
         }
 
         data = new StreamData(priority, payload, size);
@@ -704,7 +711,10 @@ namespace hydna {
             }
         } else {
             pthread_mutex_lock(&m_openStreamsMutex);
-            Stream* stream = m_openStreams[addr];
+            Stream* stream = NULL;
+
+            if (m_openStreams.count(addr) > 0)
+                stream = m_openStreams[addr];
 
             if (!stream) {
                 pthread_mutex_unlock(&m_openStreamsMutex);

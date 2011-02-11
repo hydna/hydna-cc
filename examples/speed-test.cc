@@ -91,11 +91,21 @@ int main(int argc, const char* argv[]) {
             time = getmicrosec() - time;
 
             cout << "Time: " << time/1000 << "ms" << endl;
-            sleep(10);
+
+            unsigned int i = 0;
+            while(i < NO_BROADCASTS) {
+                if (!stream.isDataEmpty()) {
+                    stream.popData();
+                    i++;
+                } else {
+                    stream.checkForStreamError();
+                }
+            }
         } else {
             cerr << "Usage: " << argv[0] << " {receive|send}" << endl;
             return -1;
         }
+
         stream.close();
     } catch (Error& e) {
         cout << "Caught exception (i=" << i << "): " << e.what() <<  endl;

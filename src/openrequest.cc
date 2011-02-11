@@ -8,7 +8,8 @@ namespace hydna {
                             Packet* packet) :
                             m_stream(stream),
                             m_addr(addr),
-                            m_packet(packet) {
+                            m_packet(packet),
+                            m_sent(false) {
     }
 
     OpenRequest::~OpenRequest() {

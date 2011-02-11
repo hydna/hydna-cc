@@ -7,7 +7,7 @@
 typedef std::vector<char> ByteArray;
 
 namespace hydna {
-    class Packet { //: public ByteArray {
+    class Packet {
     public:
 
         static const int HEADER_SIZE = 0x08;

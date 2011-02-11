@@ -27,6 +27,7 @@ stdout.
 
         // wait for connect.
         while(!stream.isConnected()) {
+            stream.checkForStreamError();
             sleep(1);
         }
 
