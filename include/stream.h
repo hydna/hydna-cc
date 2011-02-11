@@ -152,7 +152,7 @@ namespace hydna {
         
         bool m_readable;
         bool m_writable;
-        bool m_signalSupport;
+        bool m_emitable;
 
         StreamError m_error;
 

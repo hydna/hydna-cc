@@ -19,7 +19,7 @@ namespace hydna {
     using namespace std;
 
     Stream::Stream() : m_host(""), m_port(7010), m_addr(1), m_socket(NULL), m_connected(false), m_pendingClose(false),
-                       m_readable(false), m_writable(false), m_signalSupport(false), m_error("", 0x0), m_openRequest(NULL)
+                       m_readable(false), m_writable(false), m_emitable(false), m_error("", 0x0), m_openRequest(NULL)
     {
         pthread_mutex_init(&m_dataMutex, NULL);
         pthread_mutex_init(&m_signalMutex, NULL);
@@ -55,7 +55,7 @@ namespace hydna {
 
     bool Stream::hasSignalSupport() const {
         pthread_mutex_lock(&m_connectMutex);
-        bool result = m_connected && m_writable && !m_pendingClose;
+        bool result = m_connected && m_emitable && !m_pendingClose;
         pthread_mutex_unlock(&m_connectMutex);
         return result;
     }
@@ -85,7 +85,7 @@ namespace hydna {
 
         if (mode == 0x04 ||
                 mode < StreamMode::READ || 
-                mode > StreamMode::READWRITE_SIG) {
+                mode > StreamMode::READWRITE_EMIT) {
             throw Error("Invalid stream mode");
         }
       
@@ -93,7 +93,7 @@ namespace hydna {
       
         m_readable = ((m_mode & StreamMode::READ) == StreamMode::READ);
         m_writable = ((m_mode & StreamMode::WRITE) == StreamMode::WRITE);
-        m_signalSupport = ((m_mode & 0x04) == 0x04);
+        m_emitable = ((m_mode & StreamMode::EMIT) == StreamMode::EMIT);
 
         string host = expr;
         unsigned short port = 7010;
@@ -181,7 +181,7 @@ namespace hydna {
         }
         pthread_mutex_unlock(&m_connectMutex);
 
-        if (m_mode == StreamMode::READ) {
+        if ((m_mode & StreamMode::WRITE) != StreamMode::WRITE) {
             throw Error("Stream is not writable");
         }
       
@@ -220,7 +220,7 @@ namespace hydna {
         }
         pthread_mutex_unlock(&m_connectMutex);
 
-        if ((m_mode & 0x4) == 0x4) {
+        if ((m_mode & StreamMode::EMIT) != StreamMode::EMIT) {
             throw Error("You do not have permission to send signals");
         }
 
@@ -314,7 +314,12 @@ namespace hydna {
 #ifdef HYDNADEBUG
             cout << "Stream: Sending close signal" << endl;
 #endif
-            emitBytes(NULL, 0, 0, Packet::SIG_END);
+            Packet packet(m_addr, Packet::SIGNAL, Packet::SIG_END, NULL, 0, 0);
+
+            pthread_mutex_lock(&m_connectMutex);
+            ExtSocket* socket = m_socket;
+            pthread_mutex_unlock(&m_connectMutex);
+            socket->writeBytes(packet);
         } else {
             pthread_mutex_unlock(&m_connectMutex);
         }
