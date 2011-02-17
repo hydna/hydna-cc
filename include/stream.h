@@ -14,6 +14,11 @@
 
 namespace hydna {
 
+    /**
+     *  This class is used as an interface to the library.
+     *  A user of the library should use an instance of this class
+     *  to communicate with the server.
+     */
     class Stream {
     public:
         /**
@@ -24,22 +29,30 @@ namespace hydna {
         ~Stream();
         
         /**
-         *  Return the connected state for this Stream instance.
+         *  Checks the connected state for this Stream instance.
+         *
+         *  @return The connected state.
          */
         bool isConnected() const;
 
         /**
-         *  Return true if stream is readable
+         *  Checks if the stream is readable.
+         *
+         *  @return True if stream is readable.
          */
         bool isReadable() const;
 
         /**
-         *  Return true if stream is writable
+         *  Checks if the stream is writable.
+         *
+         *  @return True if stream is writable.
          */
         bool isWritable() const;
 
         /**
-         *  Return true if stream has signal support.
+         *  Checks if the stream can emit signals.
+         *
+         *  @return True if stream has signal support.
          */
         bool hasSignalSupport() const;
         
@@ -54,22 +67,13 @@ namespace hydna {
          *  Resets the error.
          *  
          *  Connects the stream to the specified addr. If the connection fails 
-         *  immediately, either an event is dispatched or an exception is thrown: 
-         *  an error event is dispatched if a host was specified, and an exception
-         *  is thrown if no host was specified. Otherwise, the status of the 
-         *  connection is reported by an event. If the socket is already 
-         *  connected, the existing connection is closed first.
+         *  immediately, an exception is thrown.
          *
-         *  By default, the value you pass for host must be in the same domain 
-         *  and the value you pass for port must be 1024 or higher. For example, 
-         *  a SWF file at adobe.com can connect only to a server daemon running 
-         *  at adobe.com. If you want to connect to a socket on a different host 
-         *  than the one from which the connecting SWF file was served, or if you 
-         *  want to connect to a port lower than 1024 on any host, you must 
-         *  obtain an xmlsocket: policy file from the host to which you are 
-         *  connecting. Howver, these restrictions do not exist for AIR content 
-         *  in the application security sandbox. For more information, see the 
-         *  "Flash Player Security" chapter in Programming ActionScript 3.0.
+         *  @param expr The address to connect to,
+         *  @param mode The mode in which to open the stream.
+         *  @param token An optional token.
+         *  @param tokenOffset Were to start to read the token from.
+         *  @param tokenLength The length of the token.
          */
         void connect(std::string const &expr,
                      unsigned int mode=StreamMode::READ,
@@ -78,38 +82,44 @@ namespace hydna {
                      unsigned int tokenLength=0);
         
         /**
-         *  Writes a sequence of bytes from the specified byte array. The write 
-         *  operation starts at the <code>position</code> specified by offset.
-         *  
-         *  <p>If you omit the length parameter the default length of 0 causes 
-         *  the method to write the entire buffer starting at offset.</p>
+         *  Sends data to the stream.
          *
-         *  <p>If you also omit the <code>offset</code> parameter, the entire 
-         *  buffer is written.</p>
-         *
-         *  <p>If offset or length is out of range, they are adjusted to match 
-         *  the beginning and end of the bytes array.</p>
+         *  @param data The data to write to the stream.
+         *  @param offset Were to read from.
+         *  @param length The length to read.
+         *  @param priority The priority of the data.
          */
         void writeBytes(const char* data,
                                 unsigned int offset,
                                 unsigned int length,
                                 unsigned int prority=1);
 
+        /**
+         *  Sends string data to the stream.
+         *
+         *  @param value The string to be sent.
+         */
         void writeString(std::string const &value);
         
         /**
-         *  Sends a signal to the stream.
+         *  Sends data signal to the stream.
          *
-         *  <p>Note: Signal write access is permitted in order to send via
-         *     network.</p>
-         *
-         *  @param value The string to write to the stream.
+         *  @param data The data to write to the stream.
+         *  @param offset Were to read from.
+         *  @param length The length to read.
+         *  @param type The type of the signal.
          */
         void emitBytes(const char* data,
                                 unsigned int offset=0,
                                 unsigned int length=0,
                                 unsigned int type=0);
 
+        /**
+         *  Sends a string signal to the stream.
+         *
+         *  @param value The string to be sent.
+         *  @param type The type of the signal.
+         */
         void emitString(std::string const &value, int type=0);
 
         /**
@@ -117,29 +127,78 @@ namespace hydna {
          */
         void close();
 
+
+        /**
+         *  Checks if some error has occured in the stream
+         *  and throws an exception if that is the case.
+         */
         void checkForStreamError();
 
-
+        /**
+         *  Pop the next data in the data queue.
+         *
+         *  @return The data that was removed from the queue,
+         *          or NULL if the queue was empty.
+         */
         StreamData* popData();
+
+        /**
+         *  Checks if the signal queue is empty.
+         *
+         *  @return True if the queue is empty.
+         */
         bool isDataEmpty();
 
+        /**
+         *  Pop the next signal in the signal queue.
+         *
+         *  @return The signal that was removed from the queue,
+         *          or NULL if the queue was empty.
+         */
         StreamSignal* popSignal();
+
+        /**
+         *  Checks if the signal queue is empty.
+         *
+         *  @return True is the queue is empty.
+         */
         bool isSignalEmpty();
 
         friend class ExtSocket;
         
     private:
-        // Internal callback for open success
+        /**
+         *  Internal callback for open success.
+         *  Used by the ExtSocket class.
+         *
+         *  @param respaddr The response address.
+         */
         void openSuccess(unsigned int respaddr);
 
-        // Internally destroy socket.
+        /**
+         *  Internally destroy socket.
+         *
+         *  @param error The cause of the destroy.
+         */
         void destroy(StreamError error);
 
+        /**
+         *  Add data to the data queue.
+         *
+         *  @param data The data to add to queue.
+         */
         void addData(StreamData* data);
 
+        /**
+         *  Add signals to the signal queue.
+         *
+         *  @param signal The signal to add to the queue.
+         */
         void addSignal(StreamSignal* signal);
         
-        // Internally close stream
+        /**
+         *  Internally close the stream.
+         */
         void internalClose();
 
         std::string m_host;

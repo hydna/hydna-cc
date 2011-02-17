@@ -11,12 +11,24 @@ namespace hydna {
     StreamData(int priority, const char* content, int size);
     
     /**
-     *  Returns the data associated with this StreamDataEvent instance.
+     *  Returns the data associated with this StreamData instance.
+     *
+     *  @return The content.
      */
     const char* getContent() const;
     
+    /**
+     *  Returns the priority of the content.
+     *
+     *  @return The priority of the content.
+     */
     int getPriority() const;
 
+    /**
+     *  Returns the size of the content.
+     *
+     *  @return The size of the content.
+     */
     int getSize() const;
 
   private:

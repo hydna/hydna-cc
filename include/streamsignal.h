@@ -11,12 +11,24 @@ namespace hydna {
     StreamSignal(int type, const char* content, int size);
     
     /**
-     *  Returns the data associated with this StreamDataEvent instance.
+     *  Returns the content associated with this StreamSignal instance.
+     *
+     *  @return The content.
      */
     const char* getContent() const;
     
+    /**
+     *  Returns the type of the content.
+     *
+     *  @return The type of the content.
+     */
     int getType() const;
 
+    /**
+     *  Returns the size of the content.
+     *
+     *  @return The size of the content.
+     */
     int getSize() const;
 
   private:

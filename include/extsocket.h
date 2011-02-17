@@ -15,80 +15,164 @@ namespace hydna {
     typedef std::map<unsigned int, Stream*> StreamMap;
 
 
+    /**
+     *  This class is used internally by the Stream class.
+     *  A user of the library should not create an instance of this class.
+     */
     class ExtSocket {
 
         typedef std::map<std::string, ExtSocket*> SocketMap;
 
     public:
-        // Return an available socket or create a new one.
+        /**
+         *  Return an available socket or create a new one.
+         *
+         *  @param host The host associated with the socket.
+         *  @param port The port associated with the socket.
+         */
         static ExtSocket* getSocket(std::string const &host, unsigned short port);
 
         /**
-         *  Initializes a new Stream instance
+         *  Initializes a new Stream instance.
+         *
+         *  @param host The host the socket should connect to.
+         *  @param port The port the socket should connect to.
          */
         ExtSocket(std::string const &host, unsigned short port);
 
         ~ExtSocket();
         
+        /**
+         *  Returns the handshake status of the socket.
+         *
+         *  @return True if the socket has handshake.
+         */
         bool hasHandshaked() const;
         
-        // Internal method to keep track of no of streams that is associated 
-        // with this connection instance.
+        /**
+         * Method to keep track of the number of streams that is associated 
+         * with this socket instance.
+         */
         void allocStream();
         
-        // Decrease the reference count
+        /**
+         *  Decrease the reference count.
+         *
+         *  @param addr The address to dealloc.
+         */
         void deallocStream(unsigned int addr);
 
-        // Request to open a stream.
-        // Return true if request went well, else false.
+        /**
+         *  Request to open a stream.
+         *
+         *  @param request The request to open the stream.
+         *  @return True if request went well, else false.
+         */
         bool requestOpen(OpenRequest* request);
         
-        // Try to cancel an open request. Returns true on success else
-        // false.
+        /**
+         *  Try to cancel an open request. Returns true on success else
+         *  false.
+         *
+         *  @param request The request to cancel.
+         *  @return True if the request was canceled.
+         */
         bool cancelOpen(OpenRequest* request);
         
+        /**
+         *  Writes a packet to the socket.
+         *
+         *  @param packet The packet to be sent.
+         */
         bool writeBytes(Packet& packet);
-        void writeMultiByte(std::string& value);
-        void writeUnsignedInt(unsigned int value);
         
     private:
+        /**
+         *  Check if there are any more references to the socket.
+         */
         void checkRefCount();
 
+        /**
+         *  Connect the socket.
+         *
+         *  @param host The host to connect to.
+         *  @param port The port to connect to.
+         */
         void connectSocket(std::string &host, int port);
         
-        //  Send a handshake packet.
+        /**
+         *  Send a handshake packet.
+         */
         void connectHandler();
 
-        // Handle the Handshake response packet.
+        /**
+         *  Handle the Handshake response packet.
+         */
         void handshakeHandler();
 
-        // Handles all incomming data.
+        /**
+         *  Handles all incomming data.
+         */
         void receiveHandler();
 
-        // Process a open response packet.
+        /**
+         *  Process an open packet.
+         *
+         *  @param addr The address that should receive the open packet.
+         *  @param errcode The error code of the open packet.
+         *  @param payload The content of the open packet.
+         *  @param size The size of the content.
+         */
         void processOpenPacket(unsigned int addr,
                                 int errcode,
                                 const char* payload,
                                 int size);
 
-        // Process a data packet.
+        /**
+         *  Process a data packet.
+         *
+         *  @param addr The address that should receive the data.
+         *  @param priority The priority of the data.
+         *  @param payload The content of the data.
+         *  @param size The size of the content.
+         */
         void processDataPacket(unsigned int addr,
                             int priority,
                             const char* payload,
                             int size);
 
+        /**
+         *  Process a signal packet.
+         *
+         *  @param stream The stream that should receive the signal.
+         *  @param flag The flag of the signal.
+         *  @param payload The content of the signal.
+         *  @param size The size of the content.
+         *  @return False is something went wrong.
+         */
         bool processSignalPacket(Stream* stream,
                             int flag,
                             const char* payload,
                             int size);
 
-        // Process a signal packet.
+        /**
+         *  Process a signal packet.
+         *
+         *  @param addr The address that should receive the signal.
+         *  @param flag The flag of the signal.
+         *  @param payload The content of the signal.
+         *  @param size The size of the content.
+         */
         void processSignalPacket(unsigned int addr,
                             int flag,
                             const char* payload,
                             int size);
 
-        // Finalize the Socket.
+        /**
+         *  Destroy the socket.
+         *
+         *  @error The cause of the destroy.
+         */
         void destroy(StreamError error);
 
 

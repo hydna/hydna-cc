@@ -8,7 +8,11 @@
 namespace hydna {
     class Packet;
     class Stream;
-
+    
+    /**
+     *  This class is used internally by both the Stream and the ExtSocket class.
+     *  A user of the library should not create an instance of this class.
+     */
     class OpenRequest {
     public:
         OpenRequest(Stream* stream,
