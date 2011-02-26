@@ -45,7 +45,7 @@ namespace hydna {
         /**
          *  Returns the handshake status of the socket.
          *
-         *  @return True if the socket has handshake.
+         *  @return True if the socket has handshaked.
          */
         bool hasHandshaked() const;
         
@@ -83,6 +83,7 @@ namespace hydna {
          *  Writes a packet to the socket.
          *
          *  @param packet The packet to be sent.
+         *  @return True if the packet was sent.
          */
         bool writeBytes(Packet& packet);
         

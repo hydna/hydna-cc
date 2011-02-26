@@ -17,7 +17,7 @@ namespace hydna {
     /**
      *  This class is used as an interface to the library.
      *  A user of the library should use an instance of this class
-     *  to communicate with the server.
+     *  to communicate with a server.
      */
     class Stream {
     public:
