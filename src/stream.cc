@@ -283,8 +283,9 @@ namespace hydna {
         if (m_error.getCode() != 0x0) {
             pthread_mutex_unlock(&m_connectMutex);
             throw m_error;
+        } else {
+            pthread_mutex_unlock(&m_connectMutex);
         }
-        pthread_mutex_unlock(&m_connectMutex);
     }
 
     void Stream::destroy(StreamError error) {

@@ -342,7 +342,7 @@ namespace hydna {
         }
 
         if (offset != HANDSHAKE_RESP_SIZE) {
-            destroy(StreamError("Server responed with bad handshake"));
+            destroy(StreamError("Server responded with bad handshake"));
             return;
         }
 
@@ -350,12 +350,13 @@ namespace hydna {
         data[HANDSHAKE_RESP_SIZE - 1] = '\0';
 
         if (prefix.compare(data) != 0) {
-            destroy(StreamError("Server responed with bad handshake"));
+            destroy(StreamError("Server responded with bad handshake"));
             return;
         }
 
         if (responseCode > 0) {
             destroy(StreamError::fromHandshakeError(responseCode));
+            return;
         }
 
         m_handshaked = true;
@@ -792,11 +793,18 @@ namespace hydna {
             m_connected = false;
             m_handshaked = false;
         }
+        
+        string ports;
+        stringstream out;
+        out << m_port;
+        ports = out.str();
+        
+        string key = m_host + ports;
 
         pthread_mutex_lock(&m_socketMutex);
-        if (m_availableSockets[m_host]) {
-            delete m_availableSockets[m_host];
-            m_availableSockets.erase(m_host);
+        if (m_availableSockets[key]) {
+            delete m_availableSockets[key];
+            m_availableSockets.erase(key);
         }
         pthread_mutex_unlock(&m_socketMutex);
 
