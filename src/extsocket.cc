@@ -433,13 +433,14 @@ namespace hydna {
                 if (m_listening) {
                     pthread_mutex_unlock(&m_listeningMutex);
                     destroy(StreamError("Could not read from the socket"));
+                } else {
+                    pthread_mutex_unlock(&m_listeningMutex);
                 }
-                pthread_mutex_unlock(&m_listeningMutex);
                 break;
             }
 
             size = ntohs(*(unsigned short*)&header[0]);
-            payload = new char[size];
+            payload = new char[size - headerSize];
 
             while(offset < size && n > 0) {
                 n = read(m_socketFDS, payload + offset - headerSize, size - offset);
@@ -451,8 +452,9 @@ namespace hydna {
                 if (m_listening) {
                     pthread_mutex_unlock(&m_listeningMutex);
                     destroy(StreamError("Could not read from the socket"));
+                } else {
+                    pthread_mutex_unlock(&m_listeningMutex);
                 }
-                pthread_mutex_unlock(&m_listeningMutex);
                 break;
             }
 

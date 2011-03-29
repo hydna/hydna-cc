@@ -17,10 +17,6 @@ namespace hydna {
             std::string msg;
 
             switch (flag) {
-                case Packet::HANDSHAKE_UNKNOWN:
-                    code = Packet::HANDSHAKE_UNKNOWN;
-                    msg = "Unknown handshake error";
-                    break;
                 case Packet::HANDSHAKE_SERVER_BUSY:
                     msg = "Handshake failed, server is busy";
                     break;
@@ -35,6 +31,12 @@ namespace hydna {
                     break;
                 case Packet::HANDSHAKE_SERVER_ERROR:
                     msg = "Handshake failed, server error";
+                    break;
+
+                default:
+                case Packet::HANDSHAKE_UNKNOWN:
+                    code = Packet::HANDSHAKE_UNKNOWN;
+                    msg = "Unknown handshake error";
                     break;
             }
 

@@ -8,7 +8,7 @@
 #include <iostream>
 
 /**
- *  Hello world example
+ *  Listener example
  */
 
 using namespace hydna;

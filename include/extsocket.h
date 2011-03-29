@@ -29,6 +29,7 @@ namespace hydna {
          *
          *  @param host The host associated with the socket.
          *  @param port The port associated with the socket.
+         *  @return The socket.
          */
         static ExtSocket* getSocket(std::string const &host, unsigned short port);
 

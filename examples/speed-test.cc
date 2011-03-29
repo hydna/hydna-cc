@@ -56,7 +56,6 @@ int main(int argc, const char* argv[]) {
         int time = 0;
 
         if (arg.compare("receive") == 0) {
-            string cs;
             cout << "Receiving from x11221133" << endl;
 
             for(;;) {
@@ -92,7 +91,7 @@ int main(int argc, const char* argv[]) {
 
             cout << "Time: " << time/1000 << "ms" << endl;
 
-            unsigned int i = 0;
+            i = 0;
             while(i < NO_BROADCASTS) {
                 if (!stream.isDataEmpty()) {
                     stream.popData();
