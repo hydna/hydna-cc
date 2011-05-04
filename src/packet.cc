@@ -7,7 +7,7 @@
 namespace hydna {
     using namespace std;
 
-    Packet::Packet(unsigned int addr,
+    Packet::Packet(unsigned int ch,
                         unsigned int op,
                         unsigned int flag,
                         const char* payload,
@@ -26,7 +26,7 @@ namespace hydna {
         bytes.reserve(length + HEADER_SIZE);
         writeShort(length + HEADER_SIZE);
         writeByte(0); // Reserved
-        writeUnsignedInt(addr);
+        writeUnsignedInt(ch);
         writeByte(op << 4 | flag);
 
         if (payload) {
@@ -70,6 +70,17 @@ namespace hydna {
 
     char* Packet::getData() {
         return &bytes[0];
+    }
+
+    void Packet::setChannel(unsigned int value) {
+        char result[4];
+
+        *(unsigned int*)&result[0] = htonl(value);
+
+        bytes[3] = result[0];
+        bytes[4] = result[1];
+        bytes[5] = result[2];
+        bytes[6] = result[3];
     }
 }
 

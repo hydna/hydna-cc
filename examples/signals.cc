@@ -16,7 +16,7 @@ using namespace std;
 
 int main(int argc, const char* argv[]) {
     Stream stream;
-    stream.connect("localhost/x00112233", StreamMode::READWRITE_EMIT);
+    stream.connect("localhost/x00112233", StreamMode::READWRITEEMIT);
 
     while(!stream.isConnected()) {
         stream.checkForStreamError();

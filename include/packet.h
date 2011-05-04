@@ -50,7 +50,7 @@ namespace hydna {
         // Upper payload limit (10kb)
         static const unsigned int PAYLOAD_MAX_LIMIT = 10 * 1024;
 
-        Packet(unsigned int addr,
+        Packet(unsigned int ch,
                 unsigned int op,
                 unsigned int flag=0,
                 const char* payload=NULL,
@@ -64,6 +64,8 @@ namespace hydna {
 
         int getSize();
         char* getData();
+
+        void setChannel(unsigned int value);
         
     private:
         ByteArray bytes;

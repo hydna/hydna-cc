@@ -86,9 +86,9 @@ namespace hydna {
 #endif
     }
     
-    void ExtSocket::deallocStream(unsigned int addr) {  
+    void ExtSocket::deallocStream(unsigned int ch) {  
 #ifdef HYDNADEBUG
-        cout << "ExtSocket: Deallocating a stream with the addr " << addr << endl;
+        cout << "ExtSocket: Deallocating a stream with the channel " << ch << endl;
 #endif
         pthread_mutex_lock(&m_destroyingMutex);
         pthread_mutex_lock(&m_closingMutex);
@@ -97,7 +97,7 @@ namespace hydna {
             pthread_mutex_unlock(&m_destroyingMutex);
 
             pthread_mutex_lock(&m_openStreamsMutex);
-            m_openStreams.erase(addr);
+            m_openStreams.erase(ch);
 #ifdef HYDNADEBUG
             cout << "ExtSocket: Size of openSteams is now " << m_openStreams.size() << endl;
 #endif
@@ -137,7 +137,7 @@ namespace hydna {
     }
 
     bool ExtSocket::requestOpen(OpenRequest* request) {
-        unsigned int streamcomp = request->getAddr();
+        unsigned int streamcomp = request->getChannel();
         OpenRequestQueue* queue;
 
 #ifdef HYDNADEBUG
@@ -198,7 +198,7 @@ namespace hydna {
     }
     
     bool ExtSocket::cancelOpen(OpenRequest* request) {
-        unsigned int streamcomp = request->getAddr();
+        unsigned int streamcomp = request->getChannel();
         OpenRequestQueue* queue;
         OpenRequestQueue  tmp;
         bool found = false;
@@ -408,7 +408,7 @@ namespace hydna {
     void ExtSocket::receiveHandler() {
         unsigned int size;
         unsigned int headerSize = Packet::HEADER_SIZE;
-        unsigned int addr;
+        unsigned int ch;
         int op;
         int flag;
 
@@ -459,7 +459,7 @@ namespace hydna {
             }
 
             // header[2]; Reserved
-            addr = ntohl(*(unsigned int*)&header[3]);
+            ch = ntohl(*(unsigned int*)&header[3]);
             op   = header[7] >> 4;
             flag = header[7] & 0xf;
 
@@ -469,21 +469,21 @@ namespace hydna {
 #ifdef HYDNADEBUG
                     cout << "ExtSocket: Received open response" << endl;
 #endif
-                    processOpenPacket(addr, flag, payload, size - headerSize);
+                    processOpenPacket(ch, flag, payload, size - headerSize);
                     break;
 
                 case Packet::DATA:
 #ifdef HYDNADEBUG
                     cout << "ExtSocket: Received data" << endl;
 #endif
-                    processDataPacket(addr, flag, payload, size - headerSize);
+                    processDataPacket(ch, flag, payload, size - headerSize);
                     break;
 
                 case Packet::SIGNAL:
 #ifdef HYDNADEBUG
                     cout << "ExtSocket: Received signal" << endl;
 #endif
-                    processSignalPacket(addr, flag, payload, size - headerSize);
+                    processSignalPacket(ch, flag, payload, size - headerSize);
                     break;
             }
 
@@ -495,16 +495,16 @@ namespace hydna {
 #endif
     }
 
-    void ExtSocket::processOpenPacket(unsigned int addr,
+    void ExtSocket::processOpenPacket(unsigned int ch,
                                        int errcode,
                                        const char* payload,
                                        int size) {
         OpenRequest* request;
         Stream* stream;
-        unsigned int respaddr = 0;
+        unsigned int respch = 0;
         
         pthread_mutex_lock(&m_pendingMutex);
-        request = m_pendingOpenRequests[addr];
+        request = m_pendingOpenRequests[ch];
         pthread_mutex_unlock(&m_pendingMutex);
 
         if (!request) {
@@ -515,23 +515,23 @@ namespace hydna {
         stream = request->getStream();
 
         if (errcode == Packet::OPEN_SUCCESS) {
-            respaddr = addr;
+            respch = ch;
         } else if (errcode == Packet::OPEN_REDIRECT) {
             if (!payload || size < 4) {
-                destroy(StreamError("Expected redirect addr from the server"));
+                destroy(StreamError("Expected redirect channel from the server"));
                 return;
             }
 
-            respaddr = ntohl(*(unsigned int*)&payload[0]);
+            respch = ntohl(*(unsigned int*)&payload[0]);
 
 #ifdef HYDNADEBUG
-            cout << "ExtSocket: Redirected from " << addr << endl;
-            cout << "ExtSocket:              to " << respaddr << endl;
+            cout << "ExtSocket: Redirected from " << ch << endl;
+            cout << "ExtSocket:              to " << respch << endl;
 #endif
         } else {
             pthread_mutex_lock(&m_pendingMutex);
-            delete m_pendingOpenRequests[addr];
-            m_pendingOpenRequests.erase(addr);
+            delete m_pendingOpenRequests[ch];
+            m_pendingOpenRequests.erase(ch);
             pthread_mutex_unlock(&m_pendingMutex);
 
             string m = "";
@@ -550,33 +550,33 @@ namespace hydna {
 
 
         pthread_mutex_lock(&m_openStreamsMutex);
-        if (m_openStreams.count(respaddr) > 0) {
+        if (m_openStreams.count(respch) > 0) {
             pthread_mutex_unlock(&m_openStreamsMutex);
             destroy(StreamError("Server redirected to open stream"));
             return;
         }
 
-        m_openStreams[respaddr] = stream;
+        m_openStreams[respch] = stream;
 #ifdef HYDNADEBUG
         cout << "ExtSocket: A new stream was added" << endl;
         cout << "ExtSocket: The size of openStreams is now " << m_openStreams.size() << endl;
 #endif
         pthread_mutex_unlock(&m_openStreamsMutex);
 
-        stream->openSuccess(respaddr);
+        stream->openSuccess(respch);
 
         pthread_mutex_lock(&m_openWaitMutex);
         pthread_mutex_lock(&m_pendingMutex);
-        if (m_openWaitQueue.count(addr) > 0) {
-            OpenRequestQueue* queue = m_openWaitQueue[addr];
+        if (m_openWaitQueue.count(ch) > 0) {
+            OpenRequestQueue* queue = m_openWaitQueue[ch];
             
             if (queue)
             {
                 // Destroy all pending request IF response wasn't a 
                 // redirected stream.
-                if (respaddr == addr) {
-                    delete m_pendingOpenRequests[addr];
-                    m_pendingOpenRequests.erase(addr);
+                if (respch == ch) {
+                    delete m_pendingOpenRequests[ch];
+                    m_pendingOpenRequests.erase(ch);
 
                     StreamError error("Stream already open");
 
@@ -591,25 +591,25 @@ namespace hydna {
 
                 request = queue->front();
                 queue->pop();
-                m_pendingOpenRequests[addr] = request;
+                m_pendingOpenRequests[ch] = request;
 
                 if (queue->empty()) {
-                    delete m_openWaitQueue[addr];
-                    m_openWaitQueue.erase(addr);
+                    delete m_openWaitQueue[ch];
+                    m_openWaitQueue.erase(ch);
                 }
 
                 writeBytes(request->getPacket());
                 request->setSent(true);
             }
         } else {
-            delete m_pendingOpenRequests[addr];
-            m_pendingOpenRequests.erase(addr);
+            delete m_pendingOpenRequests[ch];
+            m_pendingOpenRequests.erase(ch);
         }
         pthread_mutex_unlock(&m_pendingMutex);
         pthread_mutex_unlock(&m_openWaitMutex);
     }
 
-    void ExtSocket::processDataPacket(unsigned int addr,
+    void ExtSocket::processDataPacket(unsigned int ch,
                                 int priority,
                                 const char* payload,
                                 int size) {
@@ -617,8 +617,8 @@ namespace hydna {
         StreamData* data;
         
         pthread_mutex_lock(&m_openStreamsMutex);
-        if (m_openStreams.count(addr) > 0)
-            stream = m_openStreams[addr];
+        if (m_openStreams.count(ch) > 0)
+            stream = m_openStreams[ch];
         pthread_mutex_unlock(&m_openStreamsMutex);
 
         if (!stream) {
@@ -666,12 +666,12 @@ namespace hydna {
         return true;
     }
 
-    void ExtSocket::processSignalPacket(unsigned int addr,
+    void ExtSocket::processSignalPacket(unsigned int ch,
                                     int flag,
                                     const char* payload,
                                     int size)
     {
-        if (addr == 0) {
+        if (ch == 0) {
             pthread_mutex_lock(&m_openStreamsMutex);
             StreamMap::iterator it = m_openStreams.begin();
             bool destroying = false;
@@ -716,12 +716,26 @@ namespace hydna {
             pthread_mutex_lock(&m_openStreamsMutex);
             Stream* stream = NULL;
 
-            if (m_openStreams.count(addr) > 0)
-                stream = m_openStreams[addr];
+            if (m_openStreams.count(ch) > 0)
+                stream = m_openStreams[ch];
 
             if (!stream) {
                 pthread_mutex_unlock(&m_openStreamsMutex);
-                destroy(StreamError("Packet sent to unknown stream"));
+                destroy(StreamError("Received unknown channel"));
+                return;
+            }
+
+            if (flag > 0x0 && !stream->isClosing()) {
+                pthread_mutex_unlock(&m_openStreamsMutex);
+                
+                Packet packet(ch, Packet::SIGNAL, Packet::SIG_END, payload);
+                try {
+                    writeBytes(packet);
+                } catch (StreamError& e) {
+                    delete payload;
+                    destroy(e);
+                }
+                
                 return;
             }
 

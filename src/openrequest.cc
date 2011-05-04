@@ -4,10 +4,10 @@
 namespace hydna {
 
     OpenRequest::OpenRequest(Stream* stream,
-                            unsigned int addr,
+                            unsigned int ch,
                             Packet* packet) :
                             m_stream(stream),
-                            m_addr(addr),
+                            m_ch(ch),
                             m_packet(packet),
                             m_sent(false) {
     }
@@ -20,8 +20,8 @@ namespace hydna {
         return m_stream;
     }
 
-    unsigned int OpenRequest::getAddr() {
-        return m_addr;
+    unsigned int OpenRequest::getChannel() {
+        return m_ch;
     }
 
     Packet& OpenRequest::getPacket() {

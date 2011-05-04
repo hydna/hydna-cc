@@ -36,6 +36,13 @@ namespace hydna {
         bool isConnected() const;
 
         /**
+         *  Checks the closing state for this Stream instance.
+         *
+         *  @return The closing state.
+         */
+        bool isClosing() const;
+
+        /**
          *  Checks if the stream is readable.
          *
          *  @return True if stream is readable.
@@ -57,19 +64,19 @@ namespace hydna {
         bool hasSignalSupport() const;
         
         /**
-         *  Returns the addr that this instance listen to.
+         *  Returns the channel that this instance listen to.
          *
-         *  @return addr The address.
+         *  @return The channel.
          */
-        unsigned int getAddr() const;
+        unsigned int getChannel() const;
         
         /**
          *  Resets the error.
          *  
-         *  Connects the stream to the specified addr. If the connection fails 
+         *  Connects the stream to the specified channel. If the connection fails 
          *  immediately, an exception is thrown.
          *
-         *  @param expr The address to connect to,
+         *  @param expr The channel to connect to,
          *  @param mode The mode in which to open the stream.
          *  @param token An optional token.
          *  @param tokenOffset Were to start to read the token from.
@@ -171,9 +178,9 @@ namespace hydna {
          *  Internal callback for open success.
          *  Used by the ExtSocket class.
          *
-         *  @param respaddr The response address.
+         *  @param respch The response channel.
          */
-        void openSuccess(unsigned int respaddr);
+        void openSuccess(unsigned int respch);
 
         /**
          *  Internally destroy socket.
@@ -203,11 +210,12 @@ namespace hydna {
 
         std::string m_host;
         unsigned short m_port;
-        unsigned int m_addr;
+        unsigned int m_ch;
         
         ExtSocket* m_socket;
         bool m_connected;
-        bool m_pendingClose;
+        bool m_closing;
+        Packet* m_pendingClose;
         
         bool m_readable;
         bool m_writable;

@@ -59,9 +59,9 @@ namespace hydna {
         /**
          *  Decrease the reference count.
          *
-         *  @param addr The address to dealloc.
+         *  @param ch The channel to dealloc.
          */
-        void deallocStream(unsigned int addr);
+        void deallocStream(unsigned int ch);
 
         /**
          *  Request to open a stream.
@@ -120,12 +120,12 @@ namespace hydna {
         /**
          *  Process an open packet.
          *
-         *  @param addr The address that should receive the open packet.
+         *  @param ch The channel that should receive the open packet.
          *  @param errcode The error code of the open packet.
          *  @param payload The content of the open packet.
          *  @param size The size of the content.
          */
-        void processOpenPacket(unsigned int addr,
+        void processOpenPacket(unsigned int ch,
                                 int errcode,
                                 const char* payload,
                                 int size);
@@ -133,12 +133,12 @@ namespace hydna {
         /**
          *  Process a data packet.
          *
-         *  @param addr The address that should receive the data.
+         *  @param ch The channel that should receive the data.
          *  @param priority The priority of the data.
          *  @param payload The content of the data.
          *  @param size The size of the content.
          */
-        void processDataPacket(unsigned int addr,
+        void processDataPacket(unsigned int ch,
                             int priority,
                             const char* payload,
                             int size);
@@ -160,12 +160,12 @@ namespace hydna {
         /**
          *  Process a signal packet.
          *
-         *  @param addr The address that should receive the signal.
+         *  @param ch The channel that should receive the signal.
          *  @param flag The flag of the signal.
          *  @param payload The content of the signal.
          *  @param size The size of the content.
          */
-        void processSignalPacket(unsigned int addr,
+        void processSignalPacket(unsigned int ch,
                             int flag,
                             const char* payload,
                             int size);

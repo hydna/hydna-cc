@@ -16,14 +16,14 @@ namespace hydna {
     class OpenRequest {
     public:
         OpenRequest(Stream* stream,
-                unsigned int addr,
+                unsigned int ch,
                 Packet* packet);
 
         ~OpenRequest();
 
         Stream* getStream();
 
-        unsigned int getAddr();
+        unsigned int getChannel();
 
         Packet& getPacket();
 
@@ -33,7 +33,7 @@ namespace hydna {
         
     private:
         Stream* m_stream;
-        unsigned int m_addr;
+        unsigned int m_ch;
         Packet* m_packet;
         bool m_sent;
 
