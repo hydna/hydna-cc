@@ -17,6 +17,10 @@
 #include "streamerror.h"
 #include "streamsignal.h";
 
+#ifdef HYDNADEBUG
+#include "debughelper.h"
+#endif
+
 namespace hydna {
     using namespace std;
 
@@ -82,13 +86,16 @@ namespace hydna {
         m_streamRefCount++;
         pthread_mutex_unlock(&m_streamRefMutex);
 #ifdef HYDNADEBUG
-        cout << "ExtSocket: Allocating a new stream, stream ref count is " << m_streamRefCount << endl;
+        ostringstream oss;
+        oss << m_streamRefCount;
+    
+        debugPrint("ExtSocket", 0, "Allocating a new stream, stream ref count is " + oss.str());
 #endif
     }
     
     void ExtSocket::deallocStream(unsigned int ch) {  
 #ifdef HYDNADEBUG
-        cout << "ExtSocket: Deallocating a stream with the channel " << ch << endl;
+        debugPrint("ExtSocket", ch, "Deallocating a stream");
 #endif
         pthread_mutex_lock(&m_destroyingMutex);
         pthread_mutex_lock(&m_closingMutex);
@@ -99,7 +106,10 @@ namespace hydna {
             pthread_mutex_lock(&m_openStreamsMutex);
             m_openStreams.erase(ch);
 #ifdef HYDNADEBUG
-            cout << "ExtSocket: Size of openSteams is now " << m_openStreams.size() << endl;
+            ostringstream oss;
+            oss << m_openStreams.size();
+
+            debugPrint("ExtSocket", ch, "Size of openSteams is now " + oss.str());
 #endif
             pthread_mutex_unlock(&m_openStreamsMutex);
         } else  {
@@ -119,7 +129,7 @@ namespace hydna {
         if (m_streamRefCount == 0) {
             pthread_mutex_unlock(&m_streamRefMutex);
 #ifdef HYDNADEBUG
-            cout << "ExtSocket: No more refs, destroy socket" << endl;
+            debugPrint("ExtSocket", 0, "No more refs, destroy socket");
 #endif
             pthread_mutex_lock(&m_destroyingMutex);
             pthread_mutex_lock(&m_closingMutex);
@@ -137,18 +147,18 @@ namespace hydna {
     }
 
     bool ExtSocket::requestOpen(OpenRequest* request) {
-        unsigned int streamcomp = request->getChannel();
+        unsigned int chcomp = request->getChannel();
         OpenRequestQueue* queue;
 
 #ifdef HYDNADEBUG
-            cout << "ExtSocket: A stream is trying to send a new open request" << endl;
+        debugPrint("ExtSocket", chcomp, "A stream is trying to send a new open request");
 #endif
 
         pthread_mutex_lock(&m_openStreamsMutex);
-        if (m_openStreams.count(streamcomp) > 0) {
+        if (m_openStreams.count(chcomp) > 0) {
             pthread_mutex_unlock(&m_openStreamsMutex);
 #ifdef HYDNADEBUG
-            cout << "ExtSocket: The stream was already open, cancel the open request" << endl;
+            debugPrint("ExtSocket", chcomp, "The stream was already open, cancel the open request");
 #endif
             delete request;
             return false;
@@ -156,27 +166,27 @@ namespace hydna {
         pthread_mutex_unlock(&m_openStreamsMutex);
 
         pthread_mutex_lock(&m_pendingMutex);
-        if (m_pendingOpenRequests.count(streamcomp) > 0) {
+        if (m_pendingOpenRequests.count(chcomp) > 0) {
             pthread_mutex_unlock(&m_pendingMutex);
 
 #ifdef HYDNADEBUG
-            cout << "ExtSocket: A open request is waiting to be sent, queue up the new open request" << endl;
+            debugPrint("ExtSocket", chcomp, "A open request is waiting to be sent, queue up the new open request");
 #endif
             
             pthread_mutex_lock(&m_openWaitMutex);
-            queue = m_openWaitQueue[streamcomp];
+            queue = m_openWaitQueue[chcomp];
         
             if (!queue) {
-                m_openWaitQueue[streamcomp] = queue = new OpenRequestQueue();
+                m_openWaitQueue[chcomp] = queue = new OpenRequestQueue();
             } 
         
             queue->push(request);
             pthread_mutex_unlock(&m_openWaitMutex);
         } else if (!m_handshaked) {
 #ifdef HYDNADEBUG
-            cout << "ExtSocket: The socket was not connected, queue up the new open request" << endl;
+            debugPrint("ExtSocket", chcomp, "The socket was not connected, queue up the new open request");
 #endif
-            m_pendingOpenRequests[streamcomp] = request;
+            m_pendingOpenRequests[chcomp] = request;
             pthread_mutex_unlock(&m_pendingMutex);
             
             if (!m_connecting) {
@@ -184,10 +194,11 @@ namespace hydna {
                 connectSocket(m_host, m_port);
             }
         } else {
+            m_pendingOpenRequests[chcomp] = request;
             pthread_mutex_unlock(&m_pendingMutex);
 
 #ifdef HYDNADEBUG
-            cout << "ExtSocket: The socket was already connected, sending the new open request" << endl;
+            debugPrint("ExtSocket", chcomp, "The socket was already connected, sending the new open request");
 #endif
 
             writeBytes(request->getPacket());
@@ -199,7 +210,7 @@ namespace hydna {
     
     bool ExtSocket::cancelOpen(OpenRequest* request) {
         unsigned int streamcomp = request->getChannel();
-        OpenRequestQueue* queue;
+        OpenRequestQueue* queue = NULL;
         OpenRequestQueue  tmp;
         bool found = false;
       
@@ -208,7 +219,8 @@ namespace hydna {
         }
       
         pthread_mutex_lock(&m_openWaitMutex);
-        queue = m_openWaitQueue[streamcomp];
+        if (m_openWaitQueue.count(streamcomp) > 0)
+            queue = m_openWaitQueue[streamcomp];
       
         pthread_mutex_lock(&m_pendingMutex);
         if (m_pendingOpenRequests.count(streamcomp) > 0) {
@@ -259,7 +271,7 @@ namespace hydna {
         struct sockaddr_in server;
 
 #ifdef HYDNADEBUG
-        cout << "ExtSocket: Connecting socket" << endl;
+        debugPrint("ExtSocket", 0, "Connecting socket");
 #endif
 
         if ((m_socketFDS = socket(PF_INET, SOCK_STREAM, IPPROTO_TCP)) == -1) {
@@ -292,7 +304,7 @@ namespace hydna {
     
     void ExtSocket::connectHandler() {
 #ifdef HYDNADEBUG
-        cout << "ExtSocket: Socket connected, sending handshake" << endl;
+        debugPrint("ExtSocket", 0, "Socket connected, sending handshake");
 #endif
         
         unsigned int length = m_host.size();
@@ -333,7 +345,7 @@ namespace hydna {
         string prefix = "DNA1";
 
 #ifdef HYDNADEBUG
-        cout << "ExtSocket: Incoming handshake response on socket" << endl;
+        debugPrint("ExtSocket", 0, "Incoming handshake response on socket");
 #endif
 
         while(offset < HANDSHAKE_RESP_SIZE && n != 0) {
@@ -363,7 +375,7 @@ namespace hydna {
         m_connecting = false;
 
 #ifdef HYDNADEBUG
-        cout << "ExtSocket: Handshake done on socket" << endl;
+        debugPrint("ExtSocket", 0, "Handshake done on socket");
 #endif
 
         OpenRequestMap::iterator it;
@@ -375,7 +387,7 @@ namespace hydna {
             if (m_connected) {
                 request->setSent(true);
 #ifdef HYDNADEBUG
-                cout << "ExtSocket: Open request sent" << endl;
+                debugPrint("ExtSocket", request->getChannel(), "Open request sent");
 #endif
             } else {
                 return;
@@ -386,7 +398,7 @@ namespace hydna {
         args->extSocket = this;
 
 #ifdef HYDNADEBUG
-        cout << "ExtSocket: Creating a new thread for packet listening" << endl;
+        debugPrint("ExtSocket", 0, "Creating a new thread for packet listening");
 #endif
 
         if (pthread_create(&listeningThread, NULL, listen, (void*) args) != 0) {
@@ -467,21 +479,21 @@ namespace hydna {
 
                 case Packet::OPEN:
 #ifdef HYDNADEBUG
-                    cout << "ExtSocket: Received open response" << endl;
+                    debugPrint("ExtSocket", ch, "Received open response");
 #endif
                     processOpenPacket(ch, flag, payload, size - headerSize);
                     break;
 
                 case Packet::DATA:
 #ifdef HYDNADEBUG
-                    cout << "ExtSocket: Received data" << endl;
+                    debugPrint("ExtSocket", ch, "Received data");
 #endif
                     processDataPacket(ch, flag, payload, size - headerSize);
                     break;
 
                 case Packet::SIGNAL:
 #ifdef HYDNADEBUG
-                    cout << "ExtSocket: Received signal" << endl;
+                    debugPrint("ExtSocket", ch, "Received signal");
 #endif
                     processSignalPacket(ch, flag, payload, size - headerSize);
                     break;
@@ -491,7 +503,7 @@ namespace hydna {
             n = 1;
         }
 #ifdef HYDNADEBUG
-        cout << "ExtSocket: Listening thread exited" << endl;
+        debugPrint("ExtSocket", 0, "Listening thread exited");
 #endif
     }
 
@@ -499,16 +511,17 @@ namespace hydna {
                                        int errcode,
                                        const char* payload,
                                        int size) {
-        OpenRequest* request;
+        OpenRequest* request = NULL;
         Stream* stream;
         unsigned int respch = 0;
         
         pthread_mutex_lock(&m_pendingMutex);
-        request = m_pendingOpenRequests[ch];
+        if (m_pendingOpenRequests.count(ch) > 0)
+            request = m_pendingOpenRequests[ch];
         pthread_mutex_unlock(&m_pendingMutex);
 
         if (!request) {
-            destroy(StreamError("The server sent a invalid open packet"));
+            destroy(StreamError("The server sent an invalid open packet"));
             return;
         }
 
@@ -525,8 +538,14 @@ namespace hydna {
             respch = ntohl(*(unsigned int*)&payload[0]);
 
 #ifdef HYDNADEBUG
-            cout << "ExtSocket: Redirected from " << ch << endl;
-            cout << "ExtSocket:              to " << respch << endl;
+            ostringstream oss;
+            oss << ch;
+
+            ostringstream oss2;
+            oss2 << respch;
+
+            debugPrint("ExtSocket",     ch, "Redirected from " + oss.str());
+            debugPrint("ExtSocket", respch, "             to " + oss2.str());
 #endif
         } else {
             pthread_mutex_lock(&m_pendingMutex);
@@ -540,7 +559,9 @@ namespace hydna {
             }
 
 #ifdef HYDNADEBUG
-            cout << "ExtSocket: The server rejected the open request, errorcode " << errcode << endl;
+            ostringstream oss;
+            oss << errcode;
+            debugPrint("ExtSocket", ch, "The server rejected the open request, errorcode " + oss.str());
 #endif
 
             StreamError error = StreamError::fromOpenError(errcode, m);
@@ -558,8 +579,11 @@ namespace hydna {
 
         m_openStreams[respch] = stream;
 #ifdef HYDNADEBUG
-        cout << "ExtSocket: A new stream was added" << endl;
-        cout << "ExtSocket: The size of openStreams is now " << m_openStreams.size() << endl;
+        ostringstream oss;
+        oss << m_openStreams.size();
+
+        debugPrint("ExtSocket", respch, "A new stream was added");
+        debugPrint("ExtSocket", respch, "The size of openStreams is now " + oss.str());
 #endif
         pthread_mutex_unlock(&m_openStreamsMutex);
 
@@ -754,15 +778,20 @@ namespace hydna {
         StreamMap::iterator openstreams;
 
 #ifdef HYDNADEBUG
-        cout << "ExtSocket: Destroying socket because: " << error.what() << endl;
+        debugPrint("ExtSocket", 0, "Destroying socket because: " + string(error.what()));
 #endif
 
         pthread_mutex_lock(&m_pendingMutex);
 #ifdef HYDNADEBUG
-        cout << "ExtSocket: Destroying pendingOpenRequests of size " << m_pendingOpenRequests.size() << endl;
+        ostringstream oss;
+        oss << m_pendingOpenRequests.size();
+        debugPrint("ExtSocket", 0, "Destroying pendingOpenRequests of size " + oss.str());
 #endif
         pending = m_pendingOpenRequests.begin();
         for (; pending != m_pendingOpenRequests.end(); pending++) {
+#ifdef HYDNADEBUG
+        debugPrint("ExtSocket", pending->first, "Destroying stream");
+#endif
             pending->second->getStream()->destroy(error);
         }
         m_pendingOpenRequests.clear();
@@ -770,7 +799,9 @@ namespace hydna {
 
         pthread_mutex_lock(&m_openWaitMutex);
 #ifdef HYDNADEBUG
-        cout << "ExtSocket: Destroying waitQueue of size " << m_openWaitQueue.size() << endl;
+        ostringstream oss2;
+        oss2 << m_openWaitQueue.size();
+        debugPrint("ExtSocket", 0, "Destroying waitQueue of size " + oss2.str());
 #endif
         waitqueue = m_openWaitQueue.begin();
         for (; waitqueue != m_openWaitQueue.end(); waitqueue++) {
@@ -786,12 +817,14 @@ namespace hydna {
         
         pthread_mutex_lock(&m_openStreamsMutex);
 #ifdef HYDNADEBUG
-        cout << "ExtSocket: Destroying openStreams of size " << m_openStreams.size() << endl;
+        ostringstream oss3;
+        oss3 << m_openStreams.size();
+        debugPrint("ExtSocket", 0, "Destroying openStreams of size " + oss3.str());
 #endif
         openstreams = m_openStreams.begin();
         for (; openstreams != m_openStreams.end(); openstreams++) {
 #ifdef HYDNADEBUG
-            cout << "ExtSocket: Destroying stream of key " << openstreams->first << endl;
+            debugPrint("ExtSocket", openstreams->first, "Destroying stream");
 #endif
             openstreams->second->destroy(error);
         }				
@@ -800,7 +833,7 @@ namespace hydna {
 
         if (m_connected) {
 #ifdef HYDNADEBUG
-            cout << "ExtSocket: Closing socket" << endl;
+            debugPrint("ExtSocket", 0, "Closing socket");
 #endif
             pthread_mutex_lock(&m_listeningMutex);
             m_listening = false;
@@ -825,7 +858,7 @@ namespace hydna {
         pthread_mutex_unlock(&m_socketMutex);
 
 #ifdef HYDNADEBUG
-        cout << "ExtSocket: Destroying socket done" << endl;
+        debugPrint("ExtSocket", 0, "Destroying socket done");
 #endif
         
         pthread_mutex_unlock(&m_destroyingMutex);

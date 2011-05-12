@@ -14,6 +14,10 @@
 #include "rangeerror.h"
 #include "streamerror.h"
 
+#ifdef HYDNADEBUG
+#include "debughelper.h"
+#endif
+
 namespace hydna {
     
     using namespace std;
@@ -286,7 +290,7 @@ namespace hydna {
 
             try {
 #ifdef HYDNADEBUG
-                cout << "Stream: Sending close signal" << endl;
+                debugPrint("Stream", m_ch, "Sending close signal");
 #endif
                 pthread_mutex_lock(&m_connectMutex);
                 ExtSocket* socket = m_socket;
@@ -324,7 +328,7 @@ namespace hydna {
 
             try {
 #ifdef HYDNADEBUG
-                cout << "Stream: Sending close signal" << endl;
+                debugPrint("Stream", m_ch, "Sending close signal");
 #endif
                 pthread_mutex_lock(&m_connectMutex);
                 ExtSocket* socket = m_socket;

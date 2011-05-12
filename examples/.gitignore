@@ -2,5 +2,6 @@ hello-world
 signals
 listener
 speed-test
+multiple-streams
 *DEBUG
 *.o
