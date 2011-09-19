@@ -1,13 +1,13 @@
 # Usage
 
-In the following example we open a read/write stream, send a "Hello world!"
+In the following example we open a read/write channel, send a "Hello world!"
 when the connection has been established and print received messages to
 stdout.
 
     :::cpp
-    #include <stream.h>
-    #include <streammode.h>
-    #include <streamdata.h>
+    #include <channel.h>
+    #include <channelmode.h>
+    #include <channeldata.h>
      
     #include <stdexcept>
     #include <exception>
@@ -18,27 +18,27 @@ stdout.
     using namespace std;
 
     int main(int argc, const char* argv[]) {
-        // create a new stream (not a socket)
-        Stream stream;
+        // create a new channel (not a socket)
+        Channel channel;
 
-        // open a stream to channel 12345 on the domain demo.hydna.net in
+        // open a channel to channel 12345 on the domain demo.hydna.net in
         // read/write mode.
-        stream.connect("demo.hydna.net/12345", StreamMode::READWRITE);
+        channel.connect("demo.hydna.net/12345", ChannelMode::READWRITE);
 
         // wait for connect.
-        while(!stream.isConnected()) {
-            stream.checkForStreamError();
+        while(!channel.isConnected()) {
+            channel.checkForChannelError();
             sleep(1);
         }
 
-        // write "Hello world!" to the stream.
-        stream.writeString("Hello world!");
+        // write "Hello world!" to the channel.
+        channel.writeString("Hello world!");
 
         // main receive-loop: listen for incoming messages and write them
         // to stdout.
         for (;;) {
-            if (!stream.isDataEmpty()) {
-                StreamData* data = stream.popData();
+            if (!channel.isDataEmpty()) {
+                ChannelData* data = channel.popData();
                 const char* payload = data->getContent();
 
                 for (int i=0; i < data->getSize(); i++) {
@@ -48,7 +48,7 @@ stdout.
                 cout << endl;
                 break;
             } else {
-                stream.checkForStreamError();
+                channel.checkForChannelError();
             }
         }
     }
