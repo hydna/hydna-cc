@@ -6,17 +6,17 @@
 #include <map>
 
 #include "openrequest.h"
-#include "streamerror.h"
+#include "channelerror.h"
 
 namespace hydna {
     class Packet;
-    class Stream;
+    class Channel;
 
-    typedef std::map<unsigned int, Stream*> StreamMap;
+    typedef std::map<unsigned int, Channel*> ChannelMap;
 
 
     /**
-     *  This class is used internally by the Stream class.
+     *  This class is used internally by the Channel class.
      *  A user of the library should not create an instance of this class.
      */
     class ExtSocket {
@@ -34,7 +34,7 @@ namespace hydna {
         static ExtSocket* getSocket(std::string const &host, unsigned short port);
 
         /**
-         *  Initializes a new Stream instance.
+         *  Initializes a new Channel instance.
          *
          *  @param host The host the socket should connect to.
          *  @param port The port the socket should connect to.
@@ -51,22 +51,22 @@ namespace hydna {
         bool hasHandshaked() const;
         
         /**
-         * Method to keep track of the number of streams that is associated 
+         * Method to keep track of the number of channels that is associated 
          * with this socket instance.
          */
-        void allocStream();
+        void allocChannel();
         
         /**
          *  Decrease the reference count.
          *
          *  @param ch The channel to dealloc.
          */
-        void deallocStream(unsigned int ch);
+        void deallocChannel(unsigned int ch);
 
         /**
-         *  Request to open a stream.
+         *  Request to open a channel.
          *
-         *  @param request The request to open the stream.
+         *  @param request The request to open the channel.
          *  @return True if request went well, else false.
          */
         bool requestOpen(OpenRequest* request);
@@ -146,13 +146,13 @@ namespace hydna {
         /**
          *  Process a signal packet.
          *
-         *  @param stream The stream that should receive the signal.
+         *  @param channel The channel that should receive the signal.
          *  @param flag The flag of the signal.
          *  @param payload The content of the signal.
          *  @param size The size of the content.
          *  @return False is something went wrong.
          */
-        bool processSignalPacket(Stream* stream,
+        bool processSignalPacket(Channel* channel,
                             int flag,
                             const char* payload,
                             int size);
@@ -175,7 +175,7 @@ namespace hydna {
          *
          *  @error The cause of the destroy.
          */
-        void destroy(StreamError error);
+        void destroy(ChannelError error);
 
 
         static const int HANDSHAKE_SIZE = 9;
@@ -184,10 +184,10 @@ namespace hydna {
         static SocketMap m_availableSockets;
         static pthread_mutex_t m_socketMutex;
 
-        pthread_mutex_t m_streamRefMutex;
+        pthread_mutex_t m_channelRefMutex;
         pthread_mutex_t m_destroyingMutex;
         pthread_mutex_t m_closingMutex;
-        pthread_mutex_t m_openStreamsMutex;
+        pthread_mutex_t m_openChannelsMutex;
         pthread_mutex_t m_openWaitMutex;
         pthread_mutex_t m_pendingMutex;
         pthread_mutex_t m_listeningMutex;
@@ -204,10 +204,10 @@ namespace hydna {
         int m_socketFDS;
 
         OpenRequestMap m_pendingOpenRequests;
-        StreamMap m_openStreams;
+        ChannelMap m_openChannels;
         OpenRequestQueueMap m_openWaitQueue;
         
-        int m_streamRefCount;
+        int m_channelRefCount;
         
         pthread_t listeningThread;
 

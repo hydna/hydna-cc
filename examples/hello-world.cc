@@ -1,6 +1,6 @@
-#include <stream.h>
-#include <streammode.h>
-#include <streamdata.h>
+#include <channel.h>
+#include <channelmode.h>
+#include <channeldata.h>
  
 #include <stdexcept>
 #include <exception>
@@ -15,19 +15,19 @@ using namespace hydna;
 using namespace std;
 
 int main(int argc, const char* argv[]) {
-    Stream stream;
-    stream.connect("localhost/x11221133", StreamMode::READWRITE);
+    Channel channel;
+    channel.connect("localhost/x11221133", ChannelMode::READWRITE);
 
-    while(!stream.isConnected()) {
-        stream.checkForStreamError();
+    while(!channel.isConnected()) {
+        channel.checkForChannelError();
         sleep(1);
     }
 
-    stream.writeString("Hello World");
+    channel.writeString("Hello World");
 
     for (;;) {
-        if (!stream.isDataEmpty()) {
-            StreamData* data = stream.popData();
+        if (!channel.isDataEmpty()) {
+            ChannelData* data = channel.popData();
             const char* payload = data->getContent();
 
             for (int i=0; i < data->getSize(); i++) {
@@ -37,9 +37,9 @@ int main(int argc, const char* argv[]) {
             cout << endl;
             break;
         } else {
-            stream.checkForStreamError();
+            channel.checkForChannelError();
         }
     }
-    stream.close();
+    channel.close();
 }
 

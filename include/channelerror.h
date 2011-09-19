@@ -6,13 +6,13 @@
 
 namespace hydna {
 
-    class StreamError : public IOError {
+    class ChannelError : public IOError {
     public:
-        StreamError(std::string const &what,
+        ChannelError(std::string const &what,
                 unsigned int code=0xFFFF,
-                std::string const &name="StreamError") : IOError(what, name), m_code(code) {}
+                std::string const &name="ChannelError") : IOError(what, name), m_code(code) {}
 
-        static StreamError fromHandshakeError(int flag) {
+        static ChannelError fromHandshakeError(int flag) {
             int code = 0xFFFF;
             std::string msg;
 
@@ -40,40 +40,40 @@ namespace hydna {
                     break;
             }
 
-            return StreamError(msg, code);
+            return ChannelError(msg, code);
         }
 
-        static StreamError fromOpenError(int flag, std::string data) {
+        static ChannelError fromOpenError(int flag, std::string data) {
             int code = flag;
             std::string msg;
 
             switch (code) {
                 case Packet::OPEN_FAIL_NA:
-                    msg = "Failed to open stream, not available";
+                    msg = "Failed to open channel, not available";
                     break;
                 case Packet::OPEN_FAIL_MODE:
-                    msg = "Not allowed to open stream with specified mode";
+                    msg = "Not allowed to open channel with specified mode";
                     break;
                 case Packet::OPEN_FAIL_PROTOCOL:
-                    msg = "Not allowed to open stream with specified protocol";
+                    msg = "Not allowed to open channel with specified protocol";
                     break;
                 case Packet::OPEN_FAIL_HOST:
-                    msg = "Not allowed to open stream from host";
+                    msg = "Not allowed to open channel from host";
                     break;
                 case Packet::OPEN_FAIL_AUTH:
-                    msg = "Not allowed to open stream with credentials";
+                    msg = "Not allowed to open channel with credentials";
                     break;
                 case Packet::OPEN_FAIL_SERVICE_NA:
-                    msg = "Failed to open stream, service is not available";
+                    msg = "Failed to open channel, service is not available";
                     break;
                 case Packet::OPEN_FAIL_SERVICE_ERR:
-                    msg = "Failed to open stream, service error";
+                    msg = "Failed to open channel, service error";
                     break;
 
                 default:
                 case Packet::OPEN_FAIL_OTHER:
                     code = Packet::OPEN_FAIL_OTHER;
-                    msg = "Failed to open stream, unknown error";
+                    msg = "Failed to open channel, unknown error";
                     break;
             }
 
@@ -81,10 +81,10 @@ namespace hydna {
                 msg = data;
             }
 
-            return StreamError(msg, code);
+            return ChannelError(msg, code);
         }
 
-        static StreamError fromSigError(int flag, std::string data) {
+        static ChannelError fromSigError(int flag, std::string data) {
             int code = flag;
             std::string msg;
 
@@ -116,10 +116,10 @@ namespace hydna {
                 msg = data;
             }
 
-            return StreamError(msg, code);
+            return ChannelError(msg, code);
         }
         
-        virtual ~StreamError() throw() {}
+        virtual ~ChannelError() throw() {}
 
         unsigned int getCode() {
             return m_code;

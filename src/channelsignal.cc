@@ -1,22 +1,22 @@
 #include <sstream>
 
-#include "streamsignal.h"
+#include "channelsignal.h"
 
 namespace hydna {
     using namespace std;
    
-    StreamSignal::StreamSignal(int type,
+    ChannelSignal::ChannelSignal(int type,
             const char* content, int size) : m_type(type), m_content(content), m_size(size) {}
 
-    int StreamSignal::getType() const {
+    int ChannelSignal::getType() const {
         return m_type;
     }
 
-    const char* StreamSignal::getContent() const {
+    const char* ChannelSignal::getContent() const {
         return m_content;
     }
 
-    int StreamSignal::getSize() const {
+    int ChannelSignal::getSize() const {
         return m_size;
     }
 }

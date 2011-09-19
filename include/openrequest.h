@@ -7,23 +7,23 @@
 
 namespace hydna {
     class Packet;
-    class Stream;
+    class Channel;
     
     /**
-     *  This class is used internally by both the Stream and the ExtSocket class.
+     *  This class is used internally by both the Channel and the ExtSocket class.
      *  A user of the library should not create an instance of this class.
      */
     class OpenRequest {
     public:
-        OpenRequest(Stream* stream,
+        OpenRequest(Channel* channel,
                 unsigned int ch,
                 Packet* packet);
 
         ~OpenRequest();
 
-        Stream* getStream();
+        Channel* getChannel();
 
-        unsigned int getChannel();
+        unsigned int getChannelId();
 
         Packet& getPacket();
 
@@ -32,7 +32,7 @@ namespace hydna {
         void setSent(bool value);
         
     private:
-        Stream* m_stream;
+        Channel* m_channel;
         unsigned int m_ch;
         Packet* m_packet;
         bool m_sent;

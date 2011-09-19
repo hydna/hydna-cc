@@ -1,12 +1,12 @@
 #include "packet.h";
-#include "stream.h";
+#include "channel.h";
 
 namespace hydna {
 
-    OpenRequest::OpenRequest(Stream* stream,
+    OpenRequest::OpenRequest(Channel* channel,
                             unsigned int ch,
                             Packet* packet) :
-                            m_stream(stream),
+                            m_channel(channel),
                             m_ch(ch),
                             m_packet(packet),
                             m_sent(false) {
@@ -16,11 +16,11 @@ namespace hydna {
         delete m_packet;
     }
 
-    Stream* OpenRequest::getStream() {
-        return m_stream;
+    Channel* OpenRequest::getChannel() {
+        return m_channel;
     }
 
-    unsigned int OpenRequest::getChannel() {
+    unsigned int OpenRequest::getChannelId() {
         return m_ch;
     }
 

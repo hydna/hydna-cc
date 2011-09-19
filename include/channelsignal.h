@@ -6,12 +6,12 @@
 
 namespace hydna {
   
-  class StreamSignal {
+  class ChannelSignal {
   public:
-    StreamSignal(int type, const char* content, int size);
+    ChannelSignal(int type, const char* content, int size);
     
     /**
-     *  Returns the content associated with this StreamSignal instance.
+     *  Returns the content associated with this ChannelSignal instance.
      *
      *  @return The content.
      */
@@ -38,7 +38,7 @@ namespace hydna {
 
   };
 
-  typedef std::queue<StreamSignal*> StreamSignalQueue;
+  typedef std::queue<ChannelSignal*> ChannelSignalQueue;
 }
 
 #endif

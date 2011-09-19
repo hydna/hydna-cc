@@ -7,10 +7,10 @@
 
 #include "extsocket.h"
 #include "openrequest.h"
-#include "streamdata.h"
-#include "streamsignal.h"
-#include "streammode.h"
-#include "streamerror.h"
+#include "channeldata.h"
+#include "channelsignal.h"
+#include "channelmode.h"
+#include "channelerror.h"
 
 namespace hydna {
 
@@ -19,47 +19,47 @@ namespace hydna {
      *  A user of the library should use an instance of this class
      *  to communicate with a server.
      */
-    class Stream {
+    class Channel {
     public:
         /**
-         *  Initializes a new Stream instance
+         *  Initializes a new Channel instance
          */
-        Stream();
+        Channel();
 
-        ~Stream();
+        ~Channel();
         
         /**
-         *  Checks the connected state for this Stream instance.
+         *  Checks the connected state for this Channel instance.
          *
          *  @return The connected state.
          */
         bool isConnected() const;
 
         /**
-         *  Checks the closing state for this Stream instance.
+         *  Checks the closing state for this Channel instance.
          *
          *  @return The closing state.
          */
         bool isClosing() const;
 
         /**
-         *  Checks if the stream is readable.
+         *  Checks if the channel is readable.
          *
-         *  @return True if stream is readable.
+         *  @return True if channel is readable.
          */
         bool isReadable() const;
 
         /**
-         *  Checks if the stream is writable.
+         *  Checks if the channel is writable.
          *
-         *  @return True if stream is writable.
+         *  @return True if channel is writable.
          */
         bool isWritable() const;
 
         /**
-         *  Checks if the stream can emit signals.
+         *  Checks if the channel can emit signals.
          *
-         *  @return True if stream has signal support.
+         *  @return True if channel has signal support.
          */
         bool hasSignalSupport() const;
         
@@ -73,25 +73,25 @@ namespace hydna {
         /**
          *  Resets the error.
          *  
-         *  Connects the stream to the specified channel. If the connection fails 
+         *  Connects the channel to the specified channel. If the connection fails 
          *  immediately, an exception is thrown.
          *
          *  @param expr The channel to connect to,
-         *  @param mode The mode in which to open the stream.
+         *  @param mode The mode in which to open the channel.
          *  @param token An optional token.
          *  @param tokenOffset Were to start to read the token from.
          *  @param tokenLength The length of the token.
          */
         void connect(std::string const &expr,
-                     unsigned int mode=StreamMode::READ,
+                     unsigned int mode=ChannelMode::READ,
                      const char* token=NULL,
                      unsigned int tokenOffset=0,
                      unsigned int tokenLength=0);
         
         /**
-         *  Sends data to the stream.
+         *  Sends data to the channel.
          *
-         *  @param data The data to write to the stream.
+         *  @param data The data to write to the channel.
          *  @param offset Were to read from.
          *  @param length The length to read.
          *  @param priority The priority of the data.
@@ -102,16 +102,16 @@ namespace hydna {
                                 unsigned int prority=1);
 
         /**
-         *  Sends string data to the stream.
+         *  Sends string data to the channel.
          *
          *  @param value The string to be sent.
          */
         void writeString(std::string const &value);
         
         /**
-         *  Sends data signal to the stream.
+         *  Sends data signal to the channel.
          *
-         *  @param data The data to write to the stream.
+         *  @param data The data to write to the channel.
          *  @param offset Were to read from.
          *  @param length The length to read.
          *  @param type The type of the signal.
@@ -122,7 +122,7 @@ namespace hydna {
                                 unsigned int type=0);
 
         /**
-         *  Sends a string signal to the stream.
+         *  Sends a string signal to the channel.
          *
          *  @param value The string to be sent.
          *  @param type The type of the signal.
@@ -130,16 +130,16 @@ namespace hydna {
         void emitString(std::string const &value, int type=0);
 
         /**
-         *  Closes the Stream instance.
+         *  Closes the Channel instance.
          */
         void close();
 
 
         /**
-         *  Checks if some error has occured in the stream
+         *  Checks if some error has occured in the channel
          *  and throws an exception if that is the case.
          */
-        void checkForStreamError();
+        void checkForChannelError();
 
         /**
          *  Pop the next data in the data queue.
@@ -147,7 +147,7 @@ namespace hydna {
          *  @return The data that was removed from the queue,
          *          or NULL if the queue was empty.
          */
-        StreamData* popData();
+        ChannelData* popData();
 
         /**
          *  Checks if the signal queue is empty.
@@ -162,7 +162,7 @@ namespace hydna {
          *  @return The signal that was removed from the queue,
          *          or NULL if the queue was empty.
          */
-        StreamSignal* popSignal();
+        ChannelSignal* popSignal();
 
         /**
          *  Checks if the signal queue is empty.
@@ -187,24 +187,24 @@ namespace hydna {
          *
          *  @param error The cause of the destroy.
          */
-        void destroy(StreamError error);
+        void destroy(ChannelError error);
 
         /**
          *  Add data to the data queue.
          *
          *  @param data The data to add to queue.
          */
-        void addData(StreamData* data);
+        void addData(ChannelData* data);
 
         /**
          *  Add signals to the signal queue.
          *
          *  @param signal The signal to add to the queue.
          */
-        void addSignal(StreamSignal* signal);
+        void addSignal(ChannelSignal* signal);
         
         /**
-         *  Internally close the stream.
+         *  Internally close the channel.
          */
         void internalClose();
 
@@ -221,21 +221,21 @@ namespace hydna {
         bool m_writable;
         bool m_emitable;
 
-        StreamError m_error;
+        ChannelError m_error;
 
         unsigned int m_mode;
 
         OpenRequest* m_openRequest;
 
-        StreamDataQueue m_dataQueue;
-        StreamSignalQueue m_signalQueue;
+        ChannelDataQueue m_dataQueue;
+        ChannelSignalQueue m_signalQueue;
 
         mutable pthread_mutex_t m_dataMutex;
         mutable pthread_mutex_t m_signalMutex;
         mutable pthread_mutex_t m_connectMutex;
     };
 
-    typedef std::map<unsigned int, Stream*> StreamMap;
+    typedef std::map<unsigned int, Channel*> ChannelMap;
 }
 
 #endif

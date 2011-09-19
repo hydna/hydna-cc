@@ -6,12 +6,12 @@
 
 namespace hydna {
   
-  class StreamData {
+  class ChannelData {
   public:
-    StreamData(int priority, const char* content, int size);
+    ChannelData(int priority, const char* content, int size);
     
     /**
-     *  Returns the data associated with this StreamData instance.
+     *  Returns the data associated with this ChannelData instance.
      *
      *  @return The content.
      */
@@ -38,7 +38,7 @@ namespace hydna {
 
   };
 
-  typedef std::queue<StreamData*> StreamDataQueue;
+  typedef std::queue<ChannelData*> ChannelDataQueue;
 }
 
 #endif

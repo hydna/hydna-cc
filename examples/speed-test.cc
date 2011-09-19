@@ -7,9 +7,9 @@
 #include <sys/time.h>
 #include <time.h>
 
-#include <stream.h>
-#include <streammode.h>
-#include <streamdata.h>
+#include <channel.h>
+#include <channelmode.h>
+#include <channeldata.h>
 
 #include <sys/types.h>
 #include <sys/socket.h>
@@ -45,11 +45,11 @@ int main(int argc, const char* argv[]) {
     try { 
         string arg = string(argv[1]);
 
-        Stream stream;
-        stream.connect("localhost/x11221133", StreamMode::READWRITE);
+        Channel channel;
+        channel.connect("localhost/x11221133", ChannelMode::READWRITE);
 
-        while(!stream.isConnected()) {
-            stream.checkForStreamError();
+        while(!channel.isConnected()) {
+            channel.checkForChannelError();
             sleep(1);
         }
         
@@ -59,8 +59,8 @@ int main(int argc, const char* argv[]) {
             cout << "Receiving from x11221133" << endl;
 
             for(;;) {
-                if (!stream.isDataEmpty()) {
-                    stream.popData();
+                if (!channel.isDataEmpty()) {
+                    channel.popData();
 
                     if (i == 0) {
                         time = getmicrosec();
@@ -75,7 +75,7 @@ int main(int argc, const char* argv[]) {
                         i = 0;
                     }
                 } else {
-                    stream.checkForStreamError();
+                    channel.checkForChannelError();
                 }
             }
         } else if (arg.compare("send") == 0) {
@@ -84,7 +84,7 @@ int main(int argc, const char* argv[]) {
             time = getmicrosec();
 
             for (i = 0; i < NO_BROADCASTS; i++) {
-                stream.writeString(CONTENT);
+                channel.writeString(CONTENT);
             }
 
             time = getmicrosec() - time;
@@ -93,11 +93,11 @@ int main(int argc, const char* argv[]) {
 
             i = 0;
             while(i < NO_BROADCASTS) {
-                if (!stream.isDataEmpty()) {
-                    stream.popData();
+                if (!channel.isDataEmpty()) {
+                    channel.popData();
                     i++;
                 } else {
-                    stream.checkForStreamError();
+                    channel.checkForChannelError();
                 }
             }
         } else {
@@ -105,7 +105,7 @@ int main(int argc, const char* argv[]) {
             return -1;
         }
 
-        stream.close();
+        channel.close();
     } catch (Error& e) {
         cout << "Caught exception (i=" << i << "): " << e.what() <<  endl;
     }

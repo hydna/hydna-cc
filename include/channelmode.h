@@ -3,7 +3,7 @@
 
 namespace hydna {
   
-  class StreamMode {
+  class ChannelMode {
   public:
     static const unsigned int LISTEN = 0x00;
     static const unsigned int READ = 0x01;
