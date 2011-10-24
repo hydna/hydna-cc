@@ -12,7 +12,7 @@
 #include <pthread.h>
 
 #include "connection.h"
-#include "packet.h";
+#include "frame.h";
 #include "openrequest.h";
 #include "channel.h";
 #include "channeldata.h";
@@ -204,7 +204,7 @@ namespace hydna {
             debugPrint("Connection", chcomp, "Already connected, sending the new open request");
 #endif
 
-            writeBytes(request->getPacket());
+            writeBytes(request->getFrame());
             request->setSent(true);
         }
       
@@ -431,7 +431,7 @@ namespace hydna {
         OpenRequest* request;
         for (it = m_pendingOpenRequests.begin(); it != m_pendingOpenRequests.end(); it++) {
             request = it->second;
-            writeBytes(request->getPacket());
+            writeBytes(request->getFrame());
 
             if (m_connected) {
                 request->setSent(true);
@@ -447,11 +447,11 @@ namespace hydna {
         args->extConnection = this;
 
 #ifdef HYDNADEBUG
-        debugPrint("Connection", 0, "Creating a new thread for packet listening");
+        debugPrint("Connection", 0, "Creating a new thread for frame listening");
 #endif
 
         if (pthread_create(&listeningThread, NULL, listen, (void*) args) != 0) {
-            destroy(ChannelError("Could not create a new thread for packet listening"));
+            destroy(ChannelError("Could not create a new thread for frame listening"));
             return;
         }
     }
@@ -468,7 +468,7 @@ namespace hydna {
 
     void Connection::receiveHandler() {
         unsigned int size;
-        unsigned int headerSize = Packet::HEADER_SIZE;
+        unsigned int headerSize = Frame::HEADER_SIZE;
         unsigned int ch;
         int op;
         int flag;
@@ -525,25 +525,25 @@ namespace hydna {
 
             switch (op) {
 
-                case Packet::OPEN:
+                case Frame::OPEN:
 #ifdef HYDNADEBUG
                     debugPrint("Connection", ch, "Received open response");
 #endif
-                    processOpenPacket(ch, flag, payload, size - headerSize);
+                    processOpenFrame(ch, flag, payload, size - headerSize);
                     break;
 
-                case Packet::DATA:
+                case Frame::DATA:
 #ifdef HYDNADEBUG
                     debugPrint("Connection", ch, "Received data");
 #endif
-                    processDataPacket(ch, flag, payload, size - headerSize);
+                    processDataFrame(ch, flag, payload, size - headerSize);
                     break;
 
-                case Packet::SIGNAL:
+                case Frame::SIGNAL:
 #ifdef HYDNADEBUG
                     debugPrint("Connection", ch, "Received signal");
 #endif
-                    processSignalPacket(ch, flag, payload, size - headerSize);
+                    processSignalFrame(ch, flag, payload, size - headerSize);
                     break;
             }
 
@@ -555,7 +555,7 @@ namespace hydna {
 #endif
     }
 
-    void Connection::processOpenPacket(unsigned int ch,
+    void Connection::processOpenFrame(unsigned int ch,
                                        int errcode,
                                        const char* payload,
                                        int size) {
@@ -570,19 +570,19 @@ namespace hydna {
         pthread_mutex_unlock(&m_pendingMutex);
 
         if (!request) {
-            destroy(ChannelError("The server sent an invalid open packet"));
+            destroy(ChannelError("The server sent an invalid open frame"));
             return;
         }
 
         channel = request->getChannel();
 
-        if (errcode == Packet::OPEN_ALLOW) {
+        if (errcode == Frame::OPEN_ALLOW) {
             respch = ch;
 
             if (payload && size > 0) {
                 message = string(payload, size);
             }
-        } else if (errcode == Packet::OPEN_REDIRECT) {
+        } else if (errcode == Frame::OPEN_REDIRECT) {
             if (!payload || size < 4) {
                 destroy(ChannelError("Expected redirect channel from the server"));
                 return;
@@ -679,7 +679,7 @@ namespace hydna {
                     m_openWaitQueue.erase(ch);
                 }
 
-                writeBytes(request->getPacket());
+                writeBytes(request->getFrame());
                 request->setSent(true);
             }
         } else {
@@ -690,7 +690,7 @@ namespace hydna {
         pthread_mutex_unlock(&m_openWaitMutex);
     }
 
-    void Connection::processDataPacket(unsigned int ch,
+    void Connection::processDataFrame(unsigned int ch,
                                 int priority,
                                 const char* payload,
                                 int size) {
@@ -708,7 +708,7 @@ namespace hydna {
         }
 
         if (!payload || size == 0) {
-            destroy(ChannelError("Zero data packet received"));
+            destroy(ChannelError("Zero data frame received"));
             return;
         }
 
@@ -717,21 +717,21 @@ namespace hydna {
     }
 
 
-    bool Connection::processSignalPacket(Channel* channel,
+    bool Connection::processSignalFrame(Channel* channel,
                                     int flag,
                                     const char* payload,
                                     int size)
     {
         ChannelSignal* signal;
 
-        if (flag != Packet::SIG_EMIT) {
+        if (flag != Frame::SIG_EMIT) {
             string m = "";
             if (payload && size > 0) {
                 m = string(payload, size);
             }
             ChannelError error("", 0x0);
             
-            if (flag != Packet::SIG_END) {
+            if (flag != Frame::SIG_END) {
                 error = ChannelError::fromSigError(flag, m);
             }
 
@@ -747,7 +747,7 @@ namespace hydna {
         return true;
     }
 
-    void Connection::processSignalPacket(unsigned int ch,
+    void Connection::processSignalFrame(unsigned int ch,
                                     int flag,
                                     const char* payload,
                                     int size)
@@ -757,7 +757,7 @@ namespace hydna {
             ChannelMap::iterator it = m_openChannels.begin();
             bool destroying = false;
 
-            if (flag != Packet::SIG_EMIT || !payload || size == 0) {
+            if (flag != Frame::SIG_EMIT || !payload || size == 0) {
                 destroying = true;
 
                 pthread_mutex_lock(&m_closingMutex);
@@ -777,7 +777,7 @@ namespace hydna {
                     pthread_mutex_unlock(&m_closingMutex);
                 }
 
-                if (processSignalPacket(it->second, flag, payloadCopy, size)) {
+                if (processSignalFrame(it->second, flag, payloadCopy, size)) {
                     ++it;
                 } else {
                     m_openChannels.erase(it++);
@@ -806,12 +806,12 @@ namespace hydna {
                 return;
             }
 
-            if (flag != Packet::SIG_EMIT && !channel->isClosing()) {
+            if (flag != Frame::SIG_EMIT && !channel->isClosing()) {
                 pthread_mutex_unlock(&m_openChannelsMutex);
                 
-                Packet packet(ch, Packet::SIGNAL, Packet::SIG_END, payload);
+                Frame frame(ch, Frame::SIGNAL, Frame::SIG_END, payload);
                 try {
-                    writeBytes(packet);
+                    writeBytes(frame);
                 } catch (ChannelError& e) {
                     delete payload;
                     destroy(e);
@@ -820,7 +820,7 @@ namespace hydna {
                 return;
             }
 
-            processSignalPacket(channel, flag, payload, size);
+            processSignalFrame(channel, flag, payload, size);
             pthread_mutex_unlock(&m_openChannelsMutex);
         }
     }
@@ -923,11 +923,11 @@ namespace hydna {
         pthread_mutex_unlock(&m_destroyingMutex);
     }
 
-    bool Connection::writeBytes(Packet& packet) {
+    bool Connection::writeBytes(Frame& frame) {
         if (m_handshaked) {
             int n = -1;
-            int size = packet.getSize();
-            char* data = packet.getData();
+            int size = frame.getSize();
+            char* data = frame.getData();
             int offset = 0;
 
             while(offset < size && n != 0) {

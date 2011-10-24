@@ -9,7 +9,7 @@
 #include "channelerror.h"
 
 namespace hydna {
-    class Packet;
+    class Frame;
     class Channel;
 
     typedef std::map<unsigned int, Channel*> ChannelMap;
@@ -81,12 +81,12 @@ namespace hydna {
         bool cancelOpen(OpenRequest* request);
         
         /**
-         *  Writes a packet to the connection.
+         *  Writes a frame to the connection.
          *
-         *  @param packet The packet to be sent.
-         *  @return True if the packet was sent.
+         *  @param frame The frame to be sent.
+         *  @return True if the frame was sent.
          */
-        bool writeBytes(Packet& packet);
+        bool writeBytes(Frame& frame);
         
     private:
         /**
@@ -108,7 +108,7 @@ namespace hydna {
         void connectHandler(std::string const &auth);
 
         /**
-         *  Handle the Handshake response packet.
+         *  Handle the Handshake response frame.
          */
         void handshakeHandler();
 
@@ -118,33 +118,33 @@ namespace hydna {
         void receiveHandler();
 
         /**
-         *  Process an open packet.
+         *  Process an open frame.
          *
-         *  @param ch The channel that should receive the open packet.
-         *  @param errcode The error code of the open packet.
-         *  @param payload The content of the open packet.
+         *  @param ch The channel that should receive the open frame.
+         *  @param errcode The error code of the open frame.
+         *  @param payload The content of the open frame.
          *  @param size The size of the content.
          */
-        void processOpenPacket(unsigned int ch,
+        void processOpenFrame(unsigned int ch,
                                 int errcode,
                                 const char* payload,
                                 int size);
 
         /**
-         *  Process a data packet.
+         *  Process a data frame.
          *
          *  @param ch The channel that should receive the data.
          *  @param priority The priority of the data.
          *  @param payload The content of the data.
          *  @param size The size of the content.
          */
-        void processDataPacket(unsigned int ch,
+        void processDataFrame(unsigned int ch,
                             int priority,
                             const char* payload,
                             int size);
 
         /**
-         *  Process a signal packet.
+         *  Process a signal frame.
          *
          *  @param channel The channel that should receive the signal.
          *  @param flag The flag of the signal.
@@ -152,20 +152,20 @@ namespace hydna {
          *  @param size The size of the content.
          *  @return False is something went wrong.
          */
-        bool processSignalPacket(Channel* channel,
+        bool processSignalFrame(Channel* channel,
                             int flag,
                             const char* payload,
                             int size);
 
         /**
-         *  Process a signal packet.
+         *  Process a signal frame.
          *
          *  @param ch The channel that should receive the signal.
          *  @param flag The flag of the signal.
          *  @param payload The content of the signal.
          *  @param size The size of the content.
          */
-        void processSignalPacket(unsigned int ch,
+        void processSignalFrame(unsigned int ch,
                             int flag,
                             const char* payload,
                             int size);
@@ -214,7 +214,7 @@ namespace hydna {
 
         /**
          * The method that is called in the new thread.
-         * Listens for incoming packets.
+         * Listens for incoming frames.
          *
          * @param ptr A pointer to a ListenArgs struct.
          * @return NULL

@@ -1,13 +1,13 @@
 #include <iostream>
 #include <netinet/in.h>
 
-#include "packet.h"
+#include "frame.h"
 #include "rangeerror.h"
 
 namespace hydna {
     using namespace std;
 
-    Packet::Packet(unsigned int ch,
+    Frame::Frame(unsigned int ch,
                         unsigned int op,
                         unsigned int flag,
                         const char* payload,
@@ -33,17 +33,17 @@ namespace hydna {
         }
     }
 
-    void Packet::writeByte(char value) {
+    void Frame::writeByte(char value) {
         bytes.push_back(value);
     }
 
-    void Packet::writeBytes(const char* value, int offset, int length) {
+    void Frame::writeBytes(const char* value, int offset, int length) {
         for(int i = offset; i < offset + length; i++) {
             bytes.push_back(value[i]);
         }
     }
     
-    void Packet::writeShort(short value) {
+    void Frame::writeShort(short value) {
         char result[2];
 
         *(short*)&result[0] = htons(value);
@@ -52,7 +52,7 @@ namespace hydna {
         bytes.push_back(result[1]);
     }
 
-    void Packet::writeUnsignedInt(unsigned int value) {
+    void Frame::writeUnsignedInt(unsigned int value) {
         char result[4];
 
         *(unsigned int*)&result[0] = htonl(value);
@@ -63,15 +63,15 @@ namespace hydna {
         bytes.push_back(result[3]);
     }
 
-    int Packet::getSize() {
+    int Frame::getSize() {
         return bytes.size();
     }
 
-    char* Packet::getData() {
+    char* Frame::getData() {
         return &bytes[0];
     }
 
-    void Packet::setChannel(unsigned int value) {
+    void Frame::setChannel(unsigned int value) {
         char result[4];
 
         *(unsigned int*)&result[0] = htonl(value);

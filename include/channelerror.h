@@ -2,7 +2,6 @@
 #define HYDNA_STREAMERROR_H
 
 #include "ioerror.h"
-#include "packet.h"
 
 namespace hydna {
 

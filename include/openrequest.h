@@ -6,7 +6,7 @@
 #include <queue>
 
 namespace hydna {
-    class Packet;
+    class Frame;
     class Channel;
     
     /**
@@ -17,7 +17,7 @@ namespace hydna {
     public:
         OpenRequest(Channel* channel,
                 unsigned int ch,
-                Packet* packet);
+                Frame* frame);
 
         ~OpenRequest();
 
@@ -25,7 +25,7 @@ namespace hydna {
 
         unsigned int getChannelId();
 
-        Packet& getPacket();
+        Frame& getFrame();
 
         bool isSent() const;
 
@@ -34,7 +34,7 @@ namespace hydna {
     private:
         Channel* m_channel;
         unsigned int m_ch;
-        Packet* m_packet;
+        Frame* m_frame;
         bool m_sent;
 
     };

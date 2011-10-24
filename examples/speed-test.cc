@@ -70,7 +70,7 @@ int main(int argc, const char* argv[]) {
 
                     if (i == NO_BROADCASTS) {
                         time = getmicrosec() - time;
-                        cout << endl << "Received " << NO_BROADCASTS << " packets" << endl;
+                        cout << endl << "Received " << NO_BROADCASTS << " frames" << endl;
                         cout << "Time: " << time/1000 << "ms" << endl;
                         i = 0;
                     }
@@ -79,7 +79,7 @@ int main(int argc, const char* argv[]) {
                 }
             }
         } else if (arg.compare("send") == 0) {
-            cout << "Sending " << NO_BROADCASTS << " packets to x11221133" << endl;
+            cout << "Sending " << NO_BROADCASTS << " frames to x11221133" << endl;
 
             time = getmicrosec();
 

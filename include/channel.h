@@ -223,7 +223,7 @@ namespace hydna {
         Connection* m_connection;
         bool m_connected;
         bool m_closing;
-        Packet* m_pendingClose;
+        Frame* m_pendingClose;
         
         bool m_readable;
         bool m_writable;

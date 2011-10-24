@@ -7,7 +7,7 @@
 typedef std::vector<char> ByteArray;
 
 namespace hydna {
-    class Packet {
+    class Frame {
     public:
 
         static const int HEADER_SIZE = 0x07;
@@ -31,7 +31,7 @@ namespace hydna {
         // Upper payload limit (10kb)
         static const unsigned int PAYLOAD_MAX_LIMIT = 10 * 1024;
 
-        Packet(unsigned int ch,
+        Frame(unsigned int ch,
                 unsigned int op,
                 unsigned int flag=0,
                 const char* payload=NULL,

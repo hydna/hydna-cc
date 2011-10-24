@@ -3,7 +3,7 @@
 #include <sstream>
 
 #include "channel.h"
-#include "packet.h";
+#include "frame.h";
 #include "openrequest.h"
 #include "channeldata.h"
 #include "channelsignal.h"
@@ -91,7 +91,7 @@ namespace hydna {
                  unsigned int tokenOffset,
                  unsigned int tokenLength)
     {
-        Packet* packet;
+        Frame* frame;
         OpenRequest* request;
       
         pthread_mutex_lock(&m_connectMutex);
@@ -195,14 +195,14 @@ namespace hydna {
         m_connection->allocChannel();
 
         if (token || tokens == "") {
-            packet = new Packet(m_ch, Packet::OPEN, mode,
+            frame = new Frame(m_ch, Frame::OPEN, mode,
                                 token, tokenOffset, tokenLength);
         } else {
-            packet = new Packet(m_ch, Packet::OPEN, mode,
+            frame = new Frame(m_ch, Frame::OPEN, mode,
                                 tokens.c_str(), 0, tokens.size());
         }
       
-        request = new OpenRequest(this, m_ch, packet);
+        request = new OpenRequest(this, m_ch, frame);
 
         m_error = ChannelError("", 0x0);
       
@@ -237,13 +237,13 @@ namespace hydna {
             throw RangeError("Priority must be between 1 - 3");
         }
 
-        Packet packet(m_ch, Packet::DATA, priority,
+        Frame frame(m_ch, Frame::DATA, priority,
                                 data, offset, length);
       
         pthread_mutex_lock(&m_connectMutex);
         Connection* connection = m_connection;
         pthread_mutex_unlock(&m_connectMutex);
-        result = connection->writeBytes(packet);
+        result = connection->writeBytes(frame);
 
         if (!result)
             checkForChannelError();
@@ -271,13 +271,13 @@ namespace hydna {
             throw Error("You do not have permission to send signals");
         }
 
-        Packet packet(m_ch, Packet::SIGNAL, Packet::SIG_EMIT,
+        Frame frame(m_ch, Frame::SIGNAL, Frame::SIG_EMIT,
                             data, offset, length);
 
         pthread_mutex_lock(&m_connectMutex);
         Connection* connection = m_connection;
         pthread_mutex_unlock(&m_connectMutex);
-        result = connection->writeBytes(packet);
+        result = connection->writeBytes(frame);
 
         if (!result)
             checkForChannelError();
@@ -288,7 +288,7 @@ namespace hydna {
     }
 
     void Channel::close() {
-        Packet* packet;
+        Frame* frame;
 
         pthread_mutex_lock(&m_connectMutex);
         if (!m_connection || m_closing) {
@@ -313,13 +313,13 @@ namespace hydna {
             return;
         }
 
-        packet = new Packet(m_ch, Packet::SIGNAL, Packet::SIG_END);
+        frame = new Frame(m_ch, Frame::SIGNAL, Frame::SIG_END);
       
         if (m_openRequest) {
             // Open request is not responded to yet. Wait to send ENDSIG until
             // we get an OPENRESP.
             
-            m_pendingClose = packet;
+            m_pendingClose = frame;
             pthread_mutex_unlock(&m_connectMutex);
         } else {
             pthread_mutex_unlock(&m_connectMutex);
@@ -331,11 +331,11 @@ namespace hydna {
                 pthread_mutex_lock(&m_connectMutex);
                 Connection* connection = m_connection;
                 pthread_mutex_unlock(&m_connectMutex);
-                connection->writeBytes(*packet);
-                delete packet;
+                connection->writeBytes(*frame);
+                delete frame;
             } catch (ChannelError& e) {
                 pthread_mutex_unlock(&m_connectMutex);
-                delete packet;
+                delete frame;
                 destroy(e);
             }
         }
@@ -344,7 +344,7 @@ namespace hydna {
     void Channel::openSuccess(unsigned int respch, std::string const &message) {
         pthread_mutex_lock(&m_connectMutex);
         unsigned int origch = m_ch;
-        Packet* packet;
+        Frame* frame;
 
         m_openRequest = NULL;
         m_ch = respch;
@@ -352,15 +352,15 @@ namespace hydna {
         m_message = message;
       
         if (m_pendingClose) {
-            packet = m_pendingClose;
+            frame = m_pendingClose;
             m_pendingClose = NULL;
             pthread_mutex_unlock(&m_connectMutex);
 
             if (origch != respch) {
                 // channel is changed. We need to change the channel of the
-                //packet before sending to server.
+                //frame before sending to server.
                 
-                packet->setChannel(respch);
+                frame->setChannel(respch);
             }
 
             try {
@@ -370,12 +370,12 @@ namespace hydna {
                 pthread_mutex_lock(&m_connectMutex);
                 Connection* connection = m_connection;
                 pthread_mutex_unlock(&m_connectMutex);
-                connection->writeBytes(*packet);
-                delete packet;
+                connection->writeBytes(*frame);
+                delete frame;
             } catch (ChannelError& e) {
-                // Something wen't terrible wrong. Queue packet and wait
+                // Something wen't terrible wrong. Queue frame and wait
                 // for a reconnect.
-                delete packet;
+                delete frame;
                 pthread_mutex_unlock(&m_connectMutex);
                 destroy(e);
             }

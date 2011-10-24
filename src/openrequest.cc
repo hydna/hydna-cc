@@ -1,19 +1,19 @@
-#include "packet.h";
+#include "frame.h";
 #include "channel.h";
 
 namespace hydna {
 
     OpenRequest::OpenRequest(Channel* channel,
                             unsigned int ch,
-                            Packet* packet) :
+                            Frame* frame) :
                             m_channel(channel),
                             m_ch(ch),
-                            m_packet(packet),
+                            m_frame(frame),
                             m_sent(false) {
     }
 
     OpenRequest::~OpenRequest() {
-        delete m_packet;
+        delete m_frame;
     }
 
     Channel* OpenRequest::getChannel() {
@@ -24,8 +24,8 @@ namespace hydna {
         return m_ch;
     }
 
-    Packet& OpenRequest::getPacket() {
-        return *m_packet;
+    Frame& OpenRequest::getFrame() {
+        return *m_frame;
     }
 
     bool OpenRequest::isSent() const {
