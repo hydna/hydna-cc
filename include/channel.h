@@ -69,6 +69,13 @@ namespace hydna {
          *  @return The channel.
          */
         unsigned int getChannel() const;
+
+        /**
+         *  Returns the message received when connected.
+         *
+         *  @return The welcome message.
+         */
+        std::string getMessage() const;
         
         /**
          *  Resets the error.
@@ -118,8 +125,7 @@ namespace hydna {
          */
         void emitBytes(const char* data,
                                 unsigned int offset=0,
-                                unsigned int length=0,
-                                unsigned int type=0);
+                                unsigned int length=0);
 
         /**
          *  Sends a string signal to the channel.
@@ -127,7 +133,7 @@ namespace hydna {
          *  @param value The string to be sent.
          *  @param type The type of the signal.
          */
-        void emitString(std::string const &value, int type=0);
+        void emitString(std::string const &value);
 
         /**
          *  Closes the Channel instance.
@@ -180,7 +186,7 @@ namespace hydna {
          *
          *  @param respch The response channel.
          */
-        void openSuccess(unsigned int respch);
+        void openSuccess(unsigned int respch, std::string const &message);
 
         /**
          *  Internally destroy socket.
@@ -211,6 +217,8 @@ namespace hydna {
         std::string m_host;
         unsigned short m_port;
         unsigned int m_ch;
+        std::string m_auth;
+        std::string m_message;
         
         ExtSocket* m_socket;
         bool m_connected;

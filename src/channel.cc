@@ -22,7 +22,7 @@ namespace hydna {
     
     using namespace std;
 
-    Channel::Channel() : m_host(""), m_port(7010), m_ch(0), m_socket(NULL), m_connected(false), m_closing(false), m_pendingClose(NULL),
+    Channel::Channel() : m_host(""), m_port(80), m_ch(0), m_auth(""), m_message(""), m_socket(NULL), m_connected(false), m_closing(false), m_pendingClose(NULL),
                        m_readable(false), m_writable(false), m_emitable(false), m_error("", 0x0), m_openRequest(NULL)
     {
         pthread_mutex_init(&m_dataMutex, NULL);
@@ -77,6 +77,13 @@ namespace hydna {
         pthread_mutex_unlock(&m_connectMutex);
         return result;
     }
+
+    string Channel::getMessage() const {
+        pthread_mutex_lock(&m_connectMutex);
+        string result = m_message;
+        pthread_mutex_unlock(&m_connectMutex);
+        return result;
+    }
     
     void Channel::connect(string const &expr,
                  unsigned int mode,
@@ -107,17 +114,45 @@ namespace hydna {
         m_emitable = ((m_mode & ChannelMode::EMIT) == ChannelMode::EMIT);
 
         string host = expr;
-        unsigned short port = 7010;
+        unsigned short port = 80;
         unsigned int ch = 1;
         string tokens = "";
+        string auth = "";
         size_t pos;
 
+        // Host can be on the form "http://auth@localhost:80/x00112233?token"
+
+        // Take out the protocol
+        pos = host.find("://");
+        if (pos != string::npos) {
+            string protocol = host.substr(0, pos);
+            std::transform(protocol.begin(), protocol.end(), protocol.begin(), ::tolower);
+            host = host.substr(pos + 3);
+
+            if (protocol != "http") {
+                if (protocol == "https") {
+                    throw Error("The protocol HTTPS is not supported");
+                } else {
+                    throw Error("Unknown protocol, " + protocol);
+                }
+            }
+        }
+
+        // Take out the auth
+        pos = host.find("@");
+        if (pos != string::npos) {
+            auth = host.substr(0, pos);
+            host = host.substr(pos + 1);
+        }
+
+        // Take out the token
         pos = host.find_last_of("?");
         if (pos != string::npos) {
             tokens = host.substr(pos + 1);
             host = host.substr(0, pos);
         }
 
+        // Take out the channel
         pos = host.find("/x");
         if (pos != string::npos) {
             istringstream iss(host.substr(pos + 2));
@@ -138,6 +173,7 @@ namespace hydna {
             }
         }
 
+        // Take out the port
         pos = host.find_last_of(":");
         if (pos != string::npos) {
             istringstream iss(host.substr(pos + 1));
@@ -151,8 +187,9 @@ namespace hydna {
         m_host = host;
         m_port = port;
         m_ch = ch;
+        m_auth = auth;
 
-        m_socket = ExtSocket::getSocket(m_host, m_port);
+        m_socket = ExtSocket::getSocket(m_host, m_port, m_auth);
       
         // Ref count
         m_socket->allocChannel();
@@ -218,8 +255,7 @@ namespace hydna {
     
     void Channel::emitBytes(const char* data,
                             unsigned int offset,
-                            unsigned int length,
-                            unsigned int type)
+                            unsigned int length)
     {
         bool result;
 
@@ -235,7 +271,7 @@ namespace hydna {
             throw Error("You do not have permission to send signals");
         }
 
-        Packet packet(m_ch, Packet::SIGNAL, type,
+        Packet packet(m_ch, Packet::SIGNAL, Packet::SIG_EMIT,
                             data, offset, length);
 
         pthread_mutex_lock(&m_connectMutex);
@@ -247,8 +283,8 @@ namespace hydna {
             checkForChannelError();
     }
 
-    void Channel::emitString(string const &value, int type) {
-        emitBytes(value.data(), 0, value.length(), type);
+    void Channel::emitString(string const &value) {
+        emitBytes(value.data(), 0, value.length());
     }
 
     void Channel::close() {
@@ -305,7 +341,7 @@ namespace hydna {
         }
     }
     
-    void Channel::openSuccess(unsigned int respch) {
+    void Channel::openSuccess(unsigned int respch, std::string const &message) {
         pthread_mutex_lock(&m_connectMutex);
         unsigned int origch = m_ch;
         Packet* packet;
@@ -313,6 +349,7 @@ namespace hydna {
         m_openRequest = NULL;
         m_ch = respch;
         m_connected = true;
+        m_message = message;
       
         if (m_pendingClose) {
             packet = m_pendingClose;

@@ -31,7 +31,7 @@ namespace hydna {
          *  @param port The port associated with the socket.
          *  @return The socket.
          */
-        static ExtSocket* getSocket(std::string const &host, unsigned short port);
+        static ExtSocket* getSocket(std::string const &host, unsigned short port, std::string const &auth);
 
         /**
          *  Initializes a new Channel instance.
@@ -39,7 +39,7 @@ namespace hydna {
          *  @param host The host the socket should connect to.
          *  @param port The port the socket should connect to.
          */
-        ExtSocket(std::string const &host, unsigned short port);
+        ExtSocket(std::string const &host, unsigned short port, std::string const &auth);
 
         ~ExtSocket();
         
@@ -100,12 +100,12 @@ namespace hydna {
          *  @param host The host to connect to.
          *  @param port The port to connect to.
          */
-        void connectSocket(std::string &host, int port);
-        
+        void connectSocket(std::string const &host, int port, std::string const &auth);
+
         /**
-         *  Send a handshake packet.
+         *  Send HTTP upgrade request.
          */
-        void connectHandler();
+        void connectHandler(std::string const &auth);
 
         /**
          *  Handle the Handshake response packet.
@@ -201,6 +201,7 @@ namespace hydna {
 
         std::string m_host;
         unsigned short m_port;
+        std::string m_auth;
         int m_socketFDS;
 
         OpenRequestMap m_pendingOpenRequests;

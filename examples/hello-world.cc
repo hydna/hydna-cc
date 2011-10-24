@@ -16,11 +16,16 @@ using namespace std;
 
 int main(int argc, const char* argv[]) {
     Channel channel;
-    channel.connect("localhost/x11221133", ChannelMode::READWRITE);
+    channel.connect("localhost:7010/x11221133", ChannelMode::READWRITE);
 
     while(!channel.isConnected()) {
         channel.checkForChannelError();
         sleep(1);
+    }
+
+    string message = channel.getMessage();
+    if (message != "") {
+        cout << message << endl;
     }
 
     channel.writeString("Hello World");

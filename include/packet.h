@@ -10,42 +10,23 @@ namespace hydna {
     class Packet {
     public:
 
-        static const int HEADER_SIZE = 0x08;
+        static const int HEADER_SIZE = 0x07;
     
         // Opcodes
+        static const int NOOP   = 0x00;
         static const int OPEN   = 0x01;
         static const int DATA   = 0x02;
         static const int SIGNAL = 0x03;
 
-        // Handshake flags
-        static const int HANDSHAKE_UNKNOWN = 0x01;
-        static const int HANDSHAKE_SERVER_BUSY = 0x02;
-        static const int HANDSHAKE_BADFORMAT = 0x03;
-        static const int HANDSHAKE_HOSTNAME = 0x04;
-        static const int HANDSHAKE_PROTOCOL = 0x05;
-        static const int HANDSHAKE_SERVER_ERROR = 0x06;
-
         // Open Flags
-        static const int OPEN_SUCCESS = 0x0;
+        static const int OPEN_ALLOW = 0x0;
         static const int OPEN_REDIRECT = 0x1;
-        static const int OPEN_FAIL_NA = 0x8;
-        static const int OPEN_FAIL_MODE = 0x9;
-        static const int OPEN_FAIL_PROTOCOL = 0xa;
-        static const int OPEN_FAIL_HOST = 0xb;
-        static const int OPEN_FAIL_AUTH = 0xc;
-        static const int OPEN_FAIL_SERVICE_NA = 0xd;
-        static const int OPEN_FAIL_SERVICE_ERR = 0xe;
-        static const int OPEN_FAIL_OTHER = 0xf;
+        static const int OPEN_DENY = 0x7;
 
         // Signal Flags
         static const int SIG_EMIT = 0x0;
         static const int SIG_END = 0x1;
-        static const int SIG_ERR_PROTOCOL = 0xa;
-        static const int SIG_ERR_OPERATION = 0xb;
-        static const int SIG_ERR_LIMIT = 0xc;
-        static const int SIG_ERR_SERVER = 0xd;
-        static const int SIG_ERR_VIOLATION = 0xe;
-        static const int SIG_ERR_OTHER = 0xf;
+        static const int SIG_ERROR = 0x7;
         
         // Upper payload limit (10kb)
         static const unsigned int PAYLOAD_MAX_LIMIT = 10 * 1024;

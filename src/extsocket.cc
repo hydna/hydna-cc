@@ -1,5 +1,7 @@
 #include <iostream>
 #include <sstream>
+#include <string>
+#include <algorithm>
 
 #include <sys/types.h>
 #include <sys/socket.h>
@@ -24,20 +26,20 @@
 namespace hydna {
     using namespace std;
 
-    ExtSocket* ExtSocket::getSocket(string const &host, unsigned short port) {
+    ExtSocket* ExtSocket::getSocket(string const &host, unsigned short port, string const &auth) {
         ExtSocket* socket;
         string ports;
         stringstream out;
         out << port;
         ports = out.str();
         
-        string key = host + ports;
+        string key = host + ports + auth;
       
         pthread_mutex_lock(&m_socketMutex);
         if (m_availableSockets[key]) {
             socket = m_availableSockets[key];
         } else {
-            socket = new ExtSocket(host, port);
+            socket = new ExtSocket(host, port, auth);
             m_availableSockets[key] = socket;
         }
         pthread_mutex_unlock(&m_socketMutex);
@@ -45,7 +47,7 @@ namespace hydna {
         return socket;
     }
 
-    ExtSocket::ExtSocket(string const &host, unsigned short port) :
+    ExtSocket::ExtSocket(string const &host, unsigned short port, string const &auth) :
                                                 m_connecting(false),
                                                 m_connected(false),
                                                 m_handshaked(false),
@@ -54,6 +56,7 @@ namespace hydna {
                                                 m_listening(false),
                                                 m_host(host),
                                                 m_port(port),
+                                                m_auth(auth),
                                                 m_channelRefCount(0)
     {
         pthread_mutex_init(&m_socketMutex, NULL);
@@ -191,7 +194,7 @@ namespace hydna {
             
             if (!m_connecting) {
                 m_connecting = true;
-                connectSocket(m_host, m_port);
+                connectSocket(m_host, m_port, m_auth);
             }
         } else {
             m_pendingOpenRequests[chcomp] = request;
@@ -266,7 +269,7 @@ namespace hydna {
         return found;
     }
 
-    void ExtSocket::connectSocket(std::string &host, int port) {
+    void ExtSocket::connectSocket(std::string const &host, int port, std::string const &auth) {
         struct hostent     *he;
         struct sockaddr_in server;
 
@@ -296,79 +299,125 @@ namespace hydna {
                 if (connect(m_socketFDS, (struct sockaddr *)&server, sizeof(server)) == -1) {
                     destroy(ChannelError("Could not connect to the host \"" + host + "\""));
                 } else {
-                    connectHandler();
+#ifdef HYDNADEBUG
+                    debugPrint("ExtSocket", 0, "Socket connected, sending HTTP upgrade request");
+#endif
+                    connectHandler(auth);
                 }
             }
         }
     }
     
-    void ExtSocket::connectHandler() {
-#ifdef HYDNADEBUG
-        debugPrint("ExtSocket", 0, "Socket connected, sending handshake");
-#endif
-        
-        unsigned int length = m_host.size();
-        unsigned int totalLength = 4 + 1 + length;
+    void ExtSocket::connectHandler(string const &auth) {
+        const char *data;
+        unsigned int length;
         int n = -1;
         unsigned int offset = 0;
 
-        if (length < 256) {
-            char data[totalLength];
-            data[0] = 'D';
-            data[1] = 'N';
-            data[2] = 'A';
-            data[3] = '1';
-            data[4] = length;
+        string request = "GET /" + auth + " HTTP/1.1\n"
+                         "Connection: upgrade\n"
+                         "Upgrade: winksock/1\n"
+                         "Host: " + m_host;
 
-            for (unsigned int i = 0; i < length; i++) {
-                data[5 + i] = m_host[i];
-            }
+        // Redirects are not supported yet
+        if (true) {
+            request += "\nX-Follow-Redirects: no";
+        }
 
-            while(offset < totalLength && n != 0) {
-                n = write(m_socketFDS, data + offset, totalLength - offset);
-                offset += n;
-            }
+        // End of upgrade request
+        request += "\n\n";
+
+        data = request.data();
+        length = request.size();
+
+        while(offset < length && n != 0) {
+            n = write(m_socketFDS, data + offset, length - offset);
+            offset += n;
         }
 
         if (n <= 0) {
-            destroy(ChannelError("Could not send handshake"));
+            destroy(ChannelError("Could not send upgrade request"));
         } else {
             handshakeHandler();
         }
     }
 
     void ExtSocket::handshakeHandler() {
-        int responseCode = 0;
-        int offset = 0;
-        int n = -1;
-        char data[HANDSHAKE_RESP_SIZE];
-        string prefix = "DNA1";
-
 #ifdef HYDNADEBUG
-        debugPrint("ExtSocket", 0, "Incoming handshake response on socket");
+        debugPrint("ExtSocket", 0, "Incoming upgrade reponse");
 #endif
 
-        while(offset < HANDSHAKE_RESP_SIZE && n != 0) {
-            n = read(m_socketFDS, data + offset, HANDSHAKE_RESP_SIZE - offset);
-            offset += n;
-        }
+        char lf = '\n';
+        char cr = '\r';
+        bool fieldsLeft = true;
+        bool gotResponse = false;
 
-        if (offset != HANDSHAKE_RESP_SIZE) {
-            destroy(ChannelError("Server responded with bad handshake"));
-            return;
-        }
+        while(fieldsLeft) {
+            string line;
+            char c = ' ';
 
-        responseCode = data[HANDSHAKE_RESP_SIZE - 1];
-        data[HANDSHAKE_RESP_SIZE - 1] = '\0';
+            while(c != lf) {
+                read(m_socketFDS, &c, 1);
 
-        if (prefix.compare(data) != 0) {
-            destroy(ChannelError("Server responded with bad handshake"));
-            return;
-        }
+                if (c != lf && c != cr) {
+                    line.append(1, c);
+                } else if (line.length() == 0) {
+                    fieldsLeft = false;
+                }
+            }
 
-        if (responseCode > 0) {
-            destroy(ChannelError::fromHandshakeError(responseCode));
-            return;
+            if (fieldsLeft) {
+                // First line is a response, all others are fields
+                if (!gotResponse) {
+                    int code = 0;
+                    size_t pos1, pos2;
+
+                    // Take the response code from "HTTP/1.1 101 Switching Protocols"
+                    pos1 = line.find(" ");
+                    if (pos1 != string::npos) {
+                        pos2 = line.find(" ", pos1 + 1);
+
+                        if (pos2 != string::npos) {
+                            istringstream iss(line.substr(pos1 + 1, pos2 - (pos1 + 1)));
+
+                            if ((iss >> code).fail()) {
+                                destroy(ChannelError("Could not read the status from the response \"" + line + "\""));
+                            }
+                        }
+                    }
+
+                    switch (code) {
+                        case 101:
+                            // Everything is ok, continue.
+                            break;
+                        case 301:
+                        case 302:
+                        case 307:
+                            destroy(ChannelError("HTTP redirect is not supported yet"));
+                            return;
+                        default:
+                            ostringstream oss;
+                            oss << code;
+
+                            destroy(ChannelError("Server responded with bad HTTP response code, " + oss.str()));
+                            return;
+                    }
+
+                    gotResponse = true;
+                } else {
+                    std::transform(line.begin(), line.end(), line.begin(), ::tolower);
+                    size_t pos;
+
+                    pos = line.find("upgrade: ");
+                    if (pos != string::npos) {
+                        string header = line.substr(9);
+                        if (header != "winksock/1") {
+                            destroy(ChannelError("Bad protocol version: " + header));
+                            return;
+                        }
+                    }
+                }
+            }
         }
 
         m_handshaked = true;
@@ -470,10 +519,9 @@ namespace hydna {
                 break;
             }
 
-            // header[2]; Reserved
-            ch = ntohl(*(unsigned int*)&header[3]);
-            op   = header[7] >> 4;
-            flag = header[7] & 0xf;
+            ch = ntohl(*(unsigned int*)&header[2]);
+            op   = header[6] >> 3 & 3;
+            flag = header[6] & 7;
 
             switch (op) {
 
@@ -514,6 +562,7 @@ namespace hydna {
         OpenRequest* request = NULL;
         Channel* channel;
         unsigned int respch = 0;
+        string message = "";
         
         pthread_mutex_lock(&m_pendingMutex);
         if (m_pendingOpenRequests.count(ch) > 0)
@@ -527,8 +576,12 @@ namespace hydna {
 
         channel = request->getChannel();
 
-        if (errcode == Packet::OPEN_SUCCESS) {
+        if (errcode == Packet::OPEN_ALLOW) {
             respch = ch;
+
+            if (payload && size > 0) {
+                message = string(payload, size);
+            }
         } else if (errcode == Packet::OPEN_REDIRECT) {
             if (!payload || size < 4) {
                 destroy(ChannelError("Expected redirect channel from the server"));
@@ -547,6 +600,10 @@ namespace hydna {
             debugPrint("ExtSocket",     ch, "Redirected from " + oss.str());
             debugPrint("ExtSocket", respch, "             to " + oss2.str());
 #endif
+
+            if (payload && size > 4) {
+                message = string(payload + 4, size);
+            }
         } else {
             pthread_mutex_lock(&m_pendingMutex);
             delete m_pendingOpenRequests[ch];
@@ -587,7 +644,7 @@ namespace hydna {
 #endif
         pthread_mutex_unlock(&m_openChannelsMutex);
 
-        channel->openSuccess(respch);
+        channel->openSuccess(respch, message);
 
         pthread_mutex_lock(&m_openWaitMutex);
         pthread_mutex_lock(&m_pendingMutex);
@@ -667,7 +724,7 @@ namespace hydna {
     {
         ChannelSignal* signal;
 
-        if (flag > 0x0) {
+        if (flag != Packet::SIG_EMIT) {
             string m = "";
             if (payload && size > 0) {
                 m = string(payload, size);
@@ -700,7 +757,7 @@ namespace hydna {
             ChannelMap::iterator it = m_openChannels.begin();
             bool destroying = false;
 
-            if (flag > 0x0 || !payload || size == 0) {
+            if (flag != Packet::SIG_EMIT || !payload || size == 0) {
                 destroying = true;
 
                 pthread_mutex_lock(&m_closingMutex);
@@ -749,7 +806,7 @@ namespace hydna {
                 return;
             }
 
-            if (flag > 0x0 && !channel->isClosing()) {
+            if (flag != Packet::SIG_EMIT && !channel->isClosing()) {
                 pthread_mutex_unlock(&m_openChannelsMutex);
                 
                 Packet packet(ch, Packet::SIGNAL, Packet::SIG_END, payload);
@@ -848,7 +905,7 @@ namespace hydna {
         out << m_port;
         ports = out.str();
         
-        string key = m_host + ports;
+        string key = m_host + ports + m_auth;
 
         pthread_mutex_lock(&m_socketMutex);
         if (m_availableSockets[key]) {

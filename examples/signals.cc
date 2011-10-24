@@ -16,11 +16,16 @@ using namespace std;
 
 int main(int argc, const char* argv[]) {
     Channel channel;
-    channel.connect("localhost/x00112233", ChannelMode::READWRITEEMIT);
+    channel.connect("localhost:7010/x00112233", ChannelMode::READWRITEEMIT);
 
     while(!channel.isConnected()) {
         channel.checkForChannelError();
         sleep(1);
+    }
+
+    string message = channel.getMessage();
+    if (message != "") {
+        cout << message << endl;
     }
 
     channel.emitString("ping");

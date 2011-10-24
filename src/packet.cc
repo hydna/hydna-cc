@@ -25,9 +25,8 @@ namespace hydna {
 
         bytes.reserve(length + HEADER_SIZE);
         writeShort(length + HEADER_SIZE);
-        writeByte(0); // Reserved
         writeUnsignedInt(ch);
-        writeByte(op << 4 | flag);
+        writeByte((op & 3) << 3 | (flag & 7));
 
         if (payload) {
             writeBytes(payload, offset, length);
