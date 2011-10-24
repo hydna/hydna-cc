@@ -5,7 +5,7 @@
 #include <streambuf>
 #include <pthread.h>
 
-#include "extsocket.h"
+#include "connection.h"
 #include "openrequest.h"
 #include "channeldata.h"
 #include "channelsignal.h"
@@ -177,19 +177,19 @@ namespace hydna {
          */
         bool isSignalEmpty();
 
-        friend class ExtSocket;
+        friend class Connection;
         
     private:
         /**
          *  Internal callback for open success.
-         *  Used by the ExtSocket class.
+         *  Used by the Connection class.
          *
          *  @param respch The response channel.
          */
         void openSuccess(unsigned int respch, std::string const &message);
 
         /**
-         *  Internally destroy socket.
+         *  Internally destroy connection.
          *
          *  @param error The cause of the destroy.
          */
@@ -220,7 +220,7 @@ namespace hydna {
         std::string m_auth;
         std::string m_message;
         
-        ExtSocket* m_socket;
+        Connection* m_connection;
         bool m_connected;
         bool m_closing;
         Packet* m_pendingClose;

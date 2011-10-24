@@ -22,7 +22,7 @@ namespace hydna {
     
     using namespace std;
 
-    Channel::Channel() : m_host(""), m_port(80), m_ch(0), m_auth(""), m_message(""), m_socket(NULL), m_connected(false), m_closing(false), m_pendingClose(NULL),
+    Channel::Channel() : m_host(""), m_port(80), m_ch(0), m_auth(""), m_message(""), m_connection(NULL), m_connected(false), m_closing(false), m_pendingClose(NULL),
                        m_readable(false), m_writable(false), m_emitable(false), m_error("", 0x0), m_openRequest(NULL)
     {
         pthread_mutex_init(&m_dataMutex, NULL);
@@ -95,7 +95,7 @@ namespace hydna {
         OpenRequest* request;
       
         pthread_mutex_lock(&m_connectMutex);
-        if (m_socket) {
+        if (m_connection) {
             pthread_mutex_unlock(&m_connectMutex);
             throw Error("Already connected");
         }
@@ -189,10 +189,10 @@ namespace hydna {
         m_ch = ch;
         m_auth = auth;
 
-        m_socket = ExtSocket::getSocket(m_host, m_port, m_auth);
+        m_connection = Connection::getConnection(m_host, m_port, m_auth);
       
         // Ref count
-        m_socket->allocChannel();
+        m_connection->allocChannel();
 
         if (token || tokens == "") {
             packet = new Packet(m_ch, Packet::OPEN, mode,
@@ -206,7 +206,7 @@ namespace hydna {
 
         m_error = ChannelError("", 0x0);
       
-        if (!m_socket->requestOpen(request)) {
+        if (!m_connection->requestOpen(request)) {
             checkForChannelError();
             throw Error("Channel already open");
         }
@@ -222,7 +222,7 @@ namespace hydna {
         bool result;
 
         pthread_mutex_lock(&m_connectMutex);
-        if (!m_connected || !m_socket) {
+        if (!m_connected || !m_connection) {
             pthread_mutex_unlock(&m_connectMutex);
             checkForChannelError();
             throw IOError("Channel is not connected");
@@ -241,9 +241,9 @@ namespace hydna {
                                 data, offset, length);
       
         pthread_mutex_lock(&m_connectMutex);
-        ExtSocket* socket = m_socket;
+        Connection* connection = m_connection;
         pthread_mutex_unlock(&m_connectMutex);
-        result = socket->writeBytes(packet);
+        result = connection->writeBytes(packet);
 
         if (!result)
             checkForChannelError();
@@ -260,7 +260,7 @@ namespace hydna {
         bool result;
 
         pthread_mutex_lock(&m_connectMutex);
-        if (!m_connected || !m_socket) {
+        if (!m_connected || !m_connection) {
             pthread_mutex_unlock(&m_connectMutex);
             checkForChannelError();
             throw IOError("Channel is not connected.");
@@ -275,9 +275,9 @@ namespace hydna {
                             data, offset, length);
 
         pthread_mutex_lock(&m_connectMutex);
-        ExtSocket* socket = m_socket;
+        Connection* connection = m_connection;
         pthread_mutex_unlock(&m_connectMutex);
-        result = socket->writeBytes(packet);
+        result = connection->writeBytes(packet);
 
         if (!result)
             checkForChannelError();
@@ -291,7 +291,7 @@ namespace hydna {
         Packet* packet;
 
         pthread_mutex_lock(&m_connectMutex);
-        if (!m_socket || m_closing) {
+        if (!m_connection || m_closing) {
             pthread_mutex_unlock(&m_connectMutex);
             return;
         }
@@ -301,7 +301,7 @@ namespace hydna {
         m_writable = false;
         m_emitable = false;
 
-        if (m_openRequest && m_socket->cancelOpen(m_openRequest)) {
+        if (m_openRequest && m_connection->cancelOpen(m_openRequest)) {
             // Open request hasn't been posted yet, which means that it's
             // safe to destroy channel immediately.
 
@@ -329,9 +329,9 @@ namespace hydna {
                 debugPrint("Channel", m_ch, "Sending close signal");
 #endif
                 pthread_mutex_lock(&m_connectMutex);
-                ExtSocket* socket = m_socket;
+                Connection* connection = m_connection;
                 pthread_mutex_unlock(&m_connectMutex);
-                socket->writeBytes(*packet);
+                connection->writeBytes(*packet);
                 delete packet;
             } catch (ChannelError& e) {
                 pthread_mutex_unlock(&m_connectMutex);
@@ -368,9 +368,9 @@ namespace hydna {
                 debugPrint("Channel", m_ch, "Sending close signal");
 #endif
                 pthread_mutex_lock(&m_connectMutex);
-                ExtSocket* socket = m_socket;
+                Connection* connection = m_connection;
                 pthread_mutex_unlock(&m_connectMutex);
-                socket->writeBytes(*packet);
+                connection->writeBytes(*packet);
                 delete packet;
             } catch (ChannelError& e) {
                 // Something wen't terrible wrong. Queue packet and wait
@@ -396,7 +396,7 @@ namespace hydna {
 
     void Channel::destroy(ChannelError error) {
         pthread_mutex_lock(&m_connectMutex);
-        ExtSocket* socket = m_socket;
+        Connection* connection = m_connection;
         bool connected = m_connected;
         unsigned int ch = m_ch;
 
@@ -407,10 +407,10 @@ namespace hydna {
         m_pendingClose = NULL;
         m_closing = false;
         m_openRequest = NULL;
-        m_socket = NULL;
+        m_connection = NULL;
       
-        if (socket) {
-            socket->deallocChannel(connected ? ch : 0);
+        if (connection) {
+            connection->deallocChannel(connected ? ch : 0);
         }
 
         m_error = error;

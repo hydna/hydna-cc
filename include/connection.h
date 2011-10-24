@@ -19,40 +19,40 @@ namespace hydna {
      *  This class is used internally by the Channel class.
      *  A user of the library should not create an instance of this class.
      */
-    class ExtSocket {
+    class Connection {
 
-        typedef std::map<std::string, ExtSocket*> SocketMap;
+        typedef std::map<std::string, Connection*> ConnectionMap;
 
     public:
         /**
-         *  Return an available socket or create a new one.
+         *  Return an available connection or create a new one.
          *
-         *  @param host The host associated with the socket.
-         *  @param port The port associated with the socket.
-         *  @return The socket.
+         *  @param host The host associated with the connection.
+         *  @param port The port associated with the connection.
+         *  @return The connection.
          */
-        static ExtSocket* getSocket(std::string const &host, unsigned short port, std::string const &auth);
+        static Connection* getConnection(std::string const &host, unsigned short port, std::string const &auth);
 
         /**
          *  Initializes a new Channel instance.
          *
-         *  @param host The host the socket should connect to.
-         *  @param port The port the socket should connect to.
+         *  @param host The host the connection should connect to.
+         *  @param port The port the connection should connect to.
          */
-        ExtSocket(std::string const &host, unsigned short port, std::string const &auth);
+        Connection(std::string const &host, unsigned short port, std::string const &auth);
 
-        ~ExtSocket();
+        ~Connection();
         
         /**
-         *  Returns the handshake status of the socket.
+         *  Returns the handshake status of the connection.
          *
-         *  @return True if the socket has handshaked.
+         *  @return True if the connection has handshaked.
          */
         bool hasHandshaked() const;
         
         /**
          * Method to keep track of the number of channels that is associated 
-         * with this socket instance.
+         * with this connection instance.
          */
         void allocChannel();
         
@@ -81,7 +81,7 @@ namespace hydna {
         bool cancelOpen(OpenRequest* request);
         
         /**
-         *  Writes a packet to the socket.
+         *  Writes a packet to the connection.
          *
          *  @param packet The packet to be sent.
          *  @return True if the packet was sent.
@@ -90,17 +90,17 @@ namespace hydna {
         
     private:
         /**
-         *  Check if there are any more references to the socket.
+         *  Check if there are any more references to the connection.
          */
         void checkRefCount();
 
         /**
-         *  Connect the socket.
+         *  Connect the connection.
          *
          *  @param host The host to connect to.
          *  @param port The port to connect to.
          */
-        void connectSocket(std::string const &host, int port, std::string const &auth);
+        void connectConnection(std::string const &host, int port, std::string const &auth);
 
         /**
          *  Send HTTP upgrade request.
@@ -171,7 +171,7 @@ namespace hydna {
                             int size);
 
         /**
-         *  Destroy the socket.
+         *  Destroy the connection.
          *
          *  @error The cause of the destroy.
          */
@@ -181,8 +181,8 @@ namespace hydna {
         static const int HANDSHAKE_SIZE = 9;
         static const int HANDSHAKE_RESP_SIZE = 5;
 
-        static SocketMap m_availableSockets;
-        static pthread_mutex_t m_socketMutex;
+        static ConnectionMap m_availableConnections;
+        static pthread_mutex_t m_connectionMutex;
 
         pthread_mutex_t m_channelRefMutex;
         pthread_mutex_t m_destroyingMutex;
@@ -202,7 +202,7 @@ namespace hydna {
         std::string m_host;
         unsigned short m_port;
         std::string m_auth;
-        int m_socketFDS;
+        int m_connectionFDS;
 
         OpenRequestMap m_pendingOpenRequests;
         ChannelMap m_openChannels;
@@ -222,14 +222,14 @@ namespace hydna {
         static void* listen(void *ptr);
     };
 
-    typedef std::map<std::string, ExtSocket*> SocketMap;
+    typedef std::map<std::string, Connection*> ConnectionMap;
 
     /**
      * A struct with args that 
      * the new thread is using.
      */
     struct ListenArgs {
-        ExtSocket* extSocket;
+        Connection* extConnection;
     };
 }
 

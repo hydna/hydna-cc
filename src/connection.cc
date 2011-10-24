@@ -11,7 +11,7 @@
 
 #include <pthread.h>
 
-#include "extsocket.h"
+#include "connection.h"
 #include "packet.h";
 #include "openrequest.h";
 #include "channel.h";
@@ -26,8 +26,8 @@
 namespace hydna {
     using namespace std;
 
-    ExtSocket* ExtSocket::getSocket(string const &host, unsigned short port, string const &auth) {
-        ExtSocket* socket;
+    Connection* Connection::getConnection(string const &host, unsigned short port, string const &auth) {
+        Connection* connection;
         string ports;
         stringstream out;
         out << port;
@@ -35,19 +35,19 @@ namespace hydna {
         
         string key = host + ports + auth;
       
-        pthread_mutex_lock(&m_socketMutex);
-        if (m_availableSockets[key]) {
-            socket = m_availableSockets[key];
+        pthread_mutex_lock(&m_connectionMutex);
+        if (m_availableConnections[key]) {
+            connection = m_availableConnections[key];
         } else {
-            socket = new ExtSocket(host, port, auth);
-            m_availableSockets[key] = socket;
+            connection = new Connection(host, port, auth);
+            m_availableConnections[key] = connection;
         }
-        pthread_mutex_unlock(&m_socketMutex);
+        pthread_mutex_unlock(&m_connectionMutex);
 
-        return socket;
+        return connection;
     }
 
-    ExtSocket::ExtSocket(string const &host, unsigned short port, string const &auth) :
+    Connection::Connection(string const &host, unsigned short port, string const &auth) :
                                                 m_connecting(false),
                                                 m_connected(false),
                                                 m_handshaked(false),
@@ -59,7 +59,7 @@ namespace hydna {
                                                 m_auth(auth),
                                                 m_channelRefCount(0)
     {
-        pthread_mutex_init(&m_socketMutex, NULL);
+        pthread_mutex_init(&m_connectionMutex, NULL);
         pthread_mutex_init(&m_channelRefMutex, NULL);
         pthread_mutex_init(&m_destroyingMutex, NULL);
         pthread_mutex_init(&m_closingMutex, NULL);
@@ -69,8 +69,8 @@ namespace hydna {
         pthread_mutex_init(&m_listeningMutex, NULL);
     }
 
-    ExtSocket::~ExtSocket() {
-        pthread_mutex_destroy(&m_socketMutex);
+    Connection::~Connection() {
+        pthread_mutex_destroy(&m_connectionMutex);
         pthread_mutex_destroy(&m_channelRefMutex);
         pthread_mutex_destroy(&m_destroyingMutex);
         pthread_mutex_destroy(&m_closingMutex);
@@ -80,11 +80,11 @@ namespace hydna {
         pthread_mutex_destroy(&m_listeningMutex);
     }
     
-    bool ExtSocket::hasHandshaked() const {
+    bool Connection::hasHandshaked() const {
         return m_handshaked;
     }
     
-    void ExtSocket::allocChannel() {
+    void Connection::allocChannel() {
         pthread_mutex_lock(&m_channelRefMutex);
         m_channelRefCount++;
         pthread_mutex_unlock(&m_channelRefMutex);
@@ -92,13 +92,13 @@ namespace hydna {
         ostringstream oss;
         oss << m_channelRefCount;
     
-        debugPrint("ExtSocket", 0, "Allocating a new channel, channel ref count is " + oss.str());
+        debugPrint("Connection", 0, "Allocating a new channel, channel ref count is " + oss.str());
 #endif
     }
     
-    void ExtSocket::deallocChannel(unsigned int ch) {  
+    void Connection::deallocChannel(unsigned int ch) {  
 #ifdef HYDNADEBUG
-        debugPrint("ExtSocket", ch, "Deallocating a channel");
+        debugPrint("Connection", ch, "Deallocating a channel");
 #endif
         pthread_mutex_lock(&m_destroyingMutex);
         pthread_mutex_lock(&m_closingMutex);
@@ -112,7 +112,7 @@ namespace hydna {
             ostringstream oss;
             oss << m_openChannels.size();
 
-            debugPrint("ExtSocket", ch, "Size of openSteams is now " + oss.str());
+            debugPrint("Connection", ch, "Size of openSteams is now " + oss.str());
 #endif
             pthread_mutex_unlock(&m_openChannelsMutex);
         } else  {
@@ -127,12 +127,12 @@ namespace hydna {
         checkRefCount();
     }
 
-    void ExtSocket::checkRefCount() {
+    void Connection::checkRefCount() {
         pthread_mutex_lock(&m_channelRefMutex);
         if (m_channelRefCount == 0) {
             pthread_mutex_unlock(&m_channelRefMutex);
 #ifdef HYDNADEBUG
-            debugPrint("ExtSocket", 0, "No more refs, destroy socket");
+            debugPrint("Connection", 0, "No more refs, destroy connection");
 #endif
             pthread_mutex_lock(&m_destroyingMutex);
             pthread_mutex_lock(&m_closingMutex);
@@ -149,19 +149,19 @@ namespace hydna {
         }
     }
 
-    bool ExtSocket::requestOpen(OpenRequest* request) {
+    bool Connection::requestOpen(OpenRequest* request) {
         unsigned int chcomp = request->getChannelId();
         OpenRequestQueue* queue;
 
 #ifdef HYDNADEBUG
-        debugPrint("ExtSocket", chcomp, "A channel is trying to send a new open request");
+        debugPrint("Connection", chcomp, "A channel is trying to send a new open request");
 #endif
 
         pthread_mutex_lock(&m_openChannelsMutex);
         if (m_openChannels.count(chcomp) > 0) {
             pthread_mutex_unlock(&m_openChannelsMutex);
 #ifdef HYDNADEBUG
-            debugPrint("ExtSocket", chcomp, "The channel was already open, cancel the open request");
+            debugPrint("Connection", chcomp, "The channel was already open, cancel the open request");
 #endif
             delete request;
             return false;
@@ -173,7 +173,7 @@ namespace hydna {
             pthread_mutex_unlock(&m_pendingMutex);
 
 #ifdef HYDNADEBUG
-            debugPrint("ExtSocket", chcomp, "A open request is waiting to be sent, queue up the new open request");
+            debugPrint("Connection", chcomp, "A open request is waiting to be sent, queue up the new open request");
 #endif
             
             pthread_mutex_lock(&m_openWaitMutex);
@@ -187,21 +187,21 @@ namespace hydna {
             pthread_mutex_unlock(&m_openWaitMutex);
         } else if (!m_handshaked) {
 #ifdef HYDNADEBUG
-            debugPrint("ExtSocket", chcomp, "The socket was not connected, queue up the new open request");
+            debugPrint("Connection", chcomp, "No connection, queue up the new open request");
 #endif
             m_pendingOpenRequests[chcomp] = request;
             pthread_mutex_unlock(&m_pendingMutex);
             
             if (!m_connecting) {
                 m_connecting = true;
-                connectSocket(m_host, m_port, m_auth);
+                connectConnection(m_host, m_port, m_auth);
             }
         } else {
             m_pendingOpenRequests[chcomp] = request;
             pthread_mutex_unlock(&m_pendingMutex);
 
 #ifdef HYDNADEBUG
-            debugPrint("ExtSocket", chcomp, "The socket was already connected, sending the new open request");
+            debugPrint("Connection", chcomp, "Already connected, sending the new open request");
 #endif
 
             writeBytes(request->getPacket());
@@ -211,7 +211,7 @@ namespace hydna {
         return m_connected;
     }
     
-    bool ExtSocket::cancelOpen(OpenRequest* request) {
+    bool Connection::cancelOpen(OpenRequest* request) {
         unsigned int channelcomp = request->getChannelId();
         OpenRequestQueue* queue = NULL;
         OpenRequestQueue  tmp;
@@ -269,16 +269,16 @@ namespace hydna {
         return found;
     }
 
-    void ExtSocket::connectSocket(std::string const &host, int port, std::string const &auth) {
+    void Connection::connectConnection(std::string const &host, int port, std::string const &auth) {
         struct hostent     *he;
         struct sockaddr_in server;
 
 #ifdef HYDNADEBUG
-        debugPrint("ExtSocket", 0, "Connecting socket");
+        debugPrint("Connection", 0, "Connecting...");
 #endif
 
-        if ((m_socketFDS = socket(PF_INET, SOCK_STREAM, IPPROTO_TCP)) == -1) {
-            destroy(ChannelError("Socket could not be created"));
+        if ((m_connectionFDS = socket(PF_INET, SOCK_STREAM, IPPROTO_TCP)) == -1) {
+            destroy(ChannelError("Connection could not be created"));
         } else {
             m_connected = true;
 
@@ -286,7 +286,7 @@ namespace hydna {
                 destroy(ChannelError("The host \"" + host + "\" could not be resolved"));
             } else {
                 int flag = 1;
-                if (setsockopt(m_socketFDS, IPPROTO_TCP,
+                if (setsockopt(m_connectionFDS, IPPROTO_TCP,
                                      TCP_NODELAY, (char *) &flag,
                                      sizeof(flag)) < 0) {
                     cerr << "WARNING: Could not set TCP_NODELAY" << endl;
@@ -296,11 +296,11 @@ namespace hydna {
                 server.sin_family = AF_INET;
                 server.sin_port = htons(port);
 
-                if (connect(m_socketFDS, (struct sockaddr *)&server, sizeof(server)) == -1) {
+                if (connect(m_connectionFDS, (struct sockaddr *)&server, sizeof(server)) == -1) {
                     destroy(ChannelError("Could not connect to the host \"" + host + "\""));
                 } else {
 #ifdef HYDNADEBUG
-                    debugPrint("ExtSocket", 0, "Socket connected, sending HTTP upgrade request");
+                    debugPrint("Connection", 0, "Connected, sending HTTP upgrade request");
 #endif
                     connectHandler(auth);
                 }
@@ -308,7 +308,7 @@ namespace hydna {
         }
     }
     
-    void ExtSocket::connectHandler(string const &auth) {
+    void Connection::connectHandler(string const &auth) {
         const char *data;
         unsigned int length;
         int n = -1;
@@ -331,7 +331,7 @@ namespace hydna {
         length = request.size();
 
         while(offset < length && n != 0) {
-            n = write(m_socketFDS, data + offset, length - offset);
+            n = write(m_connectionFDS, data + offset, length - offset);
             offset += n;
         }
 
@@ -342,9 +342,9 @@ namespace hydna {
         }
     }
 
-    void ExtSocket::handshakeHandler() {
+    void Connection::handshakeHandler() {
 #ifdef HYDNADEBUG
-        debugPrint("ExtSocket", 0, "Incoming upgrade reponse");
+        debugPrint("Connection", 0, "Incoming upgrade reponse");
 #endif
 
         char lf = '\n';
@@ -357,7 +357,7 @@ namespace hydna {
             char c = ' ';
 
             while(c != lf) {
-                read(m_socketFDS, &c, 1);
+                read(m_connectionFDS, &c, 1);
 
                 if (c != lf && c != cr) {
                     line.append(1, c);
@@ -424,7 +424,7 @@ namespace hydna {
         m_connecting = false;
 
 #ifdef HYDNADEBUG
-        debugPrint("ExtSocket", 0, "Handshake done on socket");
+        debugPrint("Connection", 0, "Handshake done on connection");
 #endif
 
         OpenRequestMap::iterator it;
@@ -436,7 +436,7 @@ namespace hydna {
             if (m_connected) {
                 request->setSent(true);
 #ifdef HYDNADEBUG
-                debugPrint("ExtSocket", request->getChannelId(), "Open request sent");
+                debugPrint("Connection", request->getChannelId(), "Open request sent");
 #endif
             } else {
                 return;
@@ -444,10 +444,10 @@ namespace hydna {
         }
 
         ListenArgs* args = new ListenArgs();
-        args->extSocket = this;
+        args->extConnection = this;
 
 #ifdef HYDNADEBUG
-        debugPrint("ExtSocket", 0, "Creating a new thread for packet listening");
+        debugPrint("Connection", 0, "Creating a new thread for packet listening");
 #endif
 
         if (pthread_create(&listeningThread, NULL, listen, (void*) args) != 0) {
@@ -456,17 +456,17 @@ namespace hydna {
         }
     }
 
-    void* ExtSocket::listen(void *ptr) {
+    void* Connection::listen(void *ptr) {
         ListenArgs* args;
         args = (ListenArgs*) ptr;
-        ExtSocket* extSocket = args->extSocket;
+        Connection* extConnection = args->extConnection;
         delete args;
 
-        extSocket->receiveHandler();
+        extConnection->receiveHandler();
         pthread_exit(NULL);
     }
 
-    void ExtSocket::receiveHandler() {
+    void Connection::receiveHandler() {
         unsigned int size;
         unsigned int headerSize = Packet::HEADER_SIZE;
         unsigned int ch;
@@ -485,7 +485,7 @@ namespace hydna {
 
         for (;;) {
             while(offset < headerSize && n > 0) {
-                n = read(m_socketFDS, header + offset, headerSize - offset);
+                n = read(m_connectionFDS, header + offset, headerSize - offset);
                 offset += n;
             }
 
@@ -493,7 +493,7 @@ namespace hydna {
                 pthread_mutex_lock(&m_listeningMutex);
                 if (m_listening) {
                     pthread_mutex_unlock(&m_listeningMutex);
-                    destroy(ChannelError("Could not read from the socket"));
+                    destroy(ChannelError("Could not read from the connection"));
                 } else {
                     pthread_mutex_unlock(&m_listeningMutex);
                 }
@@ -504,7 +504,7 @@ namespace hydna {
             payload = new char[size - headerSize];
 
             while(offset < size && n > 0) {
-                n = read(m_socketFDS, payload + offset - headerSize, size - offset);
+                n = read(m_connectionFDS, payload + offset - headerSize, size - offset);
                 offset += n;
             }
 
@@ -512,7 +512,7 @@ namespace hydna {
                 pthread_mutex_lock(&m_listeningMutex);
                 if (m_listening) {
                     pthread_mutex_unlock(&m_listeningMutex);
-                    destroy(ChannelError("Could not read from the socket"));
+                    destroy(ChannelError("Could not read from the connection"));
                 } else {
                     pthread_mutex_unlock(&m_listeningMutex);
                 }
@@ -527,21 +527,21 @@ namespace hydna {
 
                 case Packet::OPEN:
 #ifdef HYDNADEBUG
-                    debugPrint("ExtSocket", ch, "Received open response");
+                    debugPrint("Connection", ch, "Received open response");
 #endif
                     processOpenPacket(ch, flag, payload, size - headerSize);
                     break;
 
                 case Packet::DATA:
 #ifdef HYDNADEBUG
-                    debugPrint("ExtSocket", ch, "Received data");
+                    debugPrint("Connection", ch, "Received data");
 #endif
                     processDataPacket(ch, flag, payload, size - headerSize);
                     break;
 
                 case Packet::SIGNAL:
 #ifdef HYDNADEBUG
-                    debugPrint("ExtSocket", ch, "Received signal");
+                    debugPrint("Connection", ch, "Received signal");
 #endif
                     processSignalPacket(ch, flag, payload, size - headerSize);
                     break;
@@ -551,11 +551,11 @@ namespace hydna {
             n = 1;
         }
 #ifdef HYDNADEBUG
-        debugPrint("ExtSocket", 0, "Listening thread exited");
+        debugPrint("Connection", 0, "Listening thread exited");
 #endif
     }
 
-    void ExtSocket::processOpenPacket(unsigned int ch,
+    void Connection::processOpenPacket(unsigned int ch,
                                        int errcode,
                                        const char* payload,
                                        int size) {
@@ -597,8 +597,8 @@ namespace hydna {
             ostringstream oss2;
             oss2 << respch;
 
-            debugPrint("ExtSocket",     ch, "Redirected from " + oss.str());
-            debugPrint("ExtSocket", respch, "             to " + oss2.str());
+            debugPrint("Connection",     ch, "Redirected from " + oss.str());
+            debugPrint("Connection", respch, "             to " + oss2.str());
 #endif
 
             if (payload && size > 4) {
@@ -618,7 +618,7 @@ namespace hydna {
 #ifdef HYDNADEBUG
             ostringstream oss;
             oss << errcode;
-            debugPrint("ExtSocket", ch, "The server rejected the open request, errorcode " + oss.str());
+            debugPrint("Connection", ch, "The server rejected the open request, errorcode " + oss.str());
 #endif
 
             ChannelError error = ChannelError::fromOpenError(errcode, m);
@@ -639,8 +639,8 @@ namespace hydna {
         ostringstream oss;
         oss << m_openChannels.size();
 
-        debugPrint("ExtSocket", respch, "A new channel was added");
-        debugPrint("ExtSocket", respch, "The size of openChannels is now " + oss.str());
+        debugPrint("Connection", respch, "A new channel was added");
+        debugPrint("Connection", respch, "The size of openChannels is now " + oss.str());
 #endif
         pthread_mutex_unlock(&m_openChannelsMutex);
 
@@ -690,7 +690,7 @@ namespace hydna {
         pthread_mutex_unlock(&m_openWaitMutex);
     }
 
-    void ExtSocket::processDataPacket(unsigned int ch,
+    void Connection::processDataPacket(unsigned int ch,
                                 int priority,
                                 const char* payload,
                                 int size) {
@@ -717,7 +717,7 @@ namespace hydna {
     }
 
 
-    bool ExtSocket::processSignalPacket(Channel* channel,
+    bool Connection::processSignalPacket(Channel* channel,
                                     int flag,
                                     const char* payload,
                                     int size)
@@ -747,7 +747,7 @@ namespace hydna {
         return true;
     }
 
-    void ExtSocket::processSignalPacket(unsigned int ch,
+    void Connection::processSignalPacket(unsigned int ch,
                                     int flag,
                                     const char* payload,
                                     int size)
@@ -825,7 +825,7 @@ namespace hydna {
         }
     }
 
-    void ExtSocket::destroy(ChannelError error) {
+    void Connection::destroy(ChannelError error) {
         pthread_mutex_lock(&m_destroyingMutex);
         m_destroying = true;
         pthread_mutex_unlock(&m_destroyingMutex);
@@ -835,19 +835,19 @@ namespace hydna {
         ChannelMap::iterator openchannels;
 
 #ifdef HYDNADEBUG
-        debugPrint("ExtSocket", 0, "Destroying socket because: " + string(error.what()));
+        debugPrint("Connection", 0, "Destroying connection because: " + string(error.what()));
 #endif
 
         pthread_mutex_lock(&m_pendingMutex);
 #ifdef HYDNADEBUG
         ostringstream oss;
         oss << m_pendingOpenRequests.size();
-        debugPrint("ExtSocket", 0, "Destroying pendingOpenRequests of size " + oss.str());
+        debugPrint("Connection", 0, "Destroying pendingOpenRequests of size " + oss.str());
 #endif
         pending = m_pendingOpenRequests.begin();
         for (; pending != m_pendingOpenRequests.end(); pending++) {
 #ifdef HYDNADEBUG
-        debugPrint("ExtSocket", pending->first, "Destroying channel");
+        debugPrint("Connection", pending->first, "Destroying channel");
 #endif
             pending->second->getChannel()->destroy(error);
         }
@@ -858,7 +858,7 @@ namespace hydna {
 #ifdef HYDNADEBUG
         ostringstream oss2;
         oss2 << m_openWaitQueue.size();
-        debugPrint("ExtSocket", 0, "Destroying waitQueue of size " + oss2.str());
+        debugPrint("Connection", 0, "Destroying waitQueue of size " + oss2.str());
 #endif
         waitqueue = m_openWaitQueue.begin();
         for (; waitqueue != m_openWaitQueue.end(); waitqueue++) {
@@ -876,12 +876,12 @@ namespace hydna {
 #ifdef HYDNADEBUG
         ostringstream oss3;
         oss3 << m_openChannels.size();
-        debugPrint("ExtSocket", 0, "Destroying openChannels of size " + oss3.str());
+        debugPrint("Connection", 0, "Destroying openChannels of size " + oss3.str());
 #endif
         openchannels = m_openChannels.begin();
         for (; openchannels != m_openChannels.end(); openchannels++) {
 #ifdef HYDNADEBUG
-            debugPrint("ExtSocket", openchannels->first, "Destroying channel");
+            debugPrint("Connection", openchannels->first, "Destroying channel");
 #endif
             openchannels->second->destroy(error);
         }				
@@ -890,12 +890,12 @@ namespace hydna {
 
         if (m_connected) {
 #ifdef HYDNADEBUG
-            debugPrint("ExtSocket", 0, "Closing socket");
+            debugPrint("Connection", 0, "Closing connection");
 #endif
             pthread_mutex_lock(&m_listeningMutex);
             m_listening = false;
             pthread_mutex_unlock(&m_listeningMutex);
-            close(m_socketFDS);
+            close(m_connectionFDS);
             m_connected = false;
             m_handshaked = false;
         }
@@ -907,15 +907,15 @@ namespace hydna {
         
         string key = m_host + ports + m_auth;
 
-        pthread_mutex_lock(&m_socketMutex);
-        if (m_availableSockets[key]) {
-            delete m_availableSockets[key];
-            m_availableSockets.erase(key);
+        pthread_mutex_lock(&m_connectionMutex);
+        if (m_availableConnections[key]) {
+            delete m_availableConnections[key];
+            m_availableConnections.erase(key);
         }
-        pthread_mutex_unlock(&m_socketMutex);
+        pthread_mutex_unlock(&m_connectionMutex);
 
 #ifdef HYDNADEBUG
-        debugPrint("ExtSocket", 0, "Destroying socket done");
+        debugPrint("Connection", 0, "Destroying connection done");
 #endif
         
         pthread_mutex_unlock(&m_destroyingMutex);
@@ -923,7 +923,7 @@ namespace hydna {
         pthread_mutex_unlock(&m_destroyingMutex);
     }
 
-    bool ExtSocket::writeBytes(Packet& packet) {
+    bool Connection::writeBytes(Packet& packet) {
         if (m_handshaked) {
             int n = -1;
             int size = packet.getSize();
@@ -931,12 +931,12 @@ namespace hydna {
             int offset = 0;
 
             while(offset < size && n != 0) {
-                n = write(m_socketFDS, data + offset, size - offset);
+                n = write(m_connectionFDS, data + offset, size - offset);
                 offset += n;
             }
 
             if (n <= 0) {
-                destroy(ChannelError("Could not write to the socket"));
+                destroy(ChannelError("Could not write to the connection"));
                 return false;
             }
             return true;
@@ -944,7 +944,7 @@ namespace hydna {
         return false;
     }
 
-    SocketMap ExtSocket::m_availableSockets = SocketMap();
-    pthread_mutex_t ExtSocket::m_socketMutex;
+    ConnectionMap Connection::m_availableConnections = ConnectionMap();
+    pthread_mutex_t Connection::m_connectionMutex;
 }
 

@@ -2,8 +2,8 @@
 #
 # @author Emanuel Dahlberg, http://github.com/EmanueI
 
-SRCS = extsocket.cc packet.cc openrequest.cc channel.cc channeldata.cc channelsignal.cc debughelper.cc
-HDRS = ../include/extsocket.h ../include/packet.h ../include/openrequest.h ../include/channel.h ../include/channeldata.h ../include/channelsignal.h ../include/channelmode.h ../include/error.h ../include/ioerror.h ../include/channelerror.h ../include/debughelper.h
+SRCS = connection.cc packet.cc openrequest.cc channel.cc channeldata.cc channelsignal.cc debughelper.cc
+HDRS = ../include/connection.h ../include/packet.h ../include/openrequest.h ../include/channel.h ../include/channeldata.h ../include/channelsignal.h ../include/channelmode.h ../include/error.h ../include/ioerror.h ../include/channelerror.h ../include/debughelper.h
 OBJS = $(SRCS:.cc=.o)
 DOBJS= $(SRCS:.cc=DEBUG.o)
 
