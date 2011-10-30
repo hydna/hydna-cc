@@ -1,5 +1,5 @@
-#ifndef HYDNA_EXTSOCKET_H
-#define HYDNA_EXTSOCKET_H
+#ifndef HYDNA_CONNECTION_H
+#define HYDNA_CONNECTION_H
 
 #include <iostream>
 #include <streambuf>
@@ -88,6 +88,8 @@ namespace hydna {
          */
         bool writeBytes(Frame& frame);
         
+        static bool m_followRedirects;
+
     private:
         /**
          *  Check if there are any more references to the connection.
@@ -178,6 +180,8 @@ namespace hydna {
         void destroy(ChannelError error);
 
 
+        static const unsigned int MAX_REDIRECT_ATTEMPTS = 5;
+
         static const int HANDSHAKE_SIZE = 9;
         static const int HANDSHAKE_RESP_SIZE = 5;
 
@@ -203,6 +207,7 @@ namespace hydna {
         unsigned short m_port;
         std::string m_auth;
         int m_connectionFDS;
+        unsigned int m_attempt;
 
         OpenRequestMap m_pendingOpenRequests;
         ChannelMap m_openChannels;

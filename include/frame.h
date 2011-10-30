@@ -1,5 +1,5 @@
-#ifndef HYDNA_PACKET_H
-#define HYDNA_PACKET_H
+#ifndef HYDNA_FRAME_H
+#define HYDNA_FRAME_H
 
 #include <iostream>
 #include <vector>

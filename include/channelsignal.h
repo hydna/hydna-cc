@@ -1,5 +1,5 @@
-#ifndef HYDNA_STREAMSIGNAL_H
-#define HYDNA_STREAMSIGNAL_H
+#ifndef HYDNA_CHANNELSIGNAL_H
+#define HYDNA_CHANNELSIGNAL_H
 
 #include <iostream>
 #include <queue>

@@ -18,6 +18,7 @@
 #include "channeldata.h";
 #include "channelerror.h"
 #include "channelsignal.h";
+#include "urlparser.h";
 
 #ifdef HYDNADEBUG
 #include "debughelper.h"
@@ -57,6 +58,7 @@ namespace hydna {
                                                 m_host(host),
                                                 m_port(port),
                                                 m_auth(auth),
+                                                m_attempt(0),
                                                 m_channelRefCount(0)
     {
         pthread_mutex_init(&m_connectionMutex, NULL);
@@ -273,8 +275,13 @@ namespace hydna {
         struct hostent     *he;
         struct sockaddr_in server;
 
+        ++m_attempt;
+
 #ifdef HYDNADEBUG
-        debugPrint("Connection", 0, "Connecting...");
+        ostringstream oss;
+        oss << m_attempt;
+
+        debugPrint("Connection", 0, "Connecting, attempt " + oss.str());
 #endif
 
         if ((m_connectionFDS = socket(PF_INET, SOCK_STREAM, IPPROTO_TCP)) == -1) {
@@ -297,7 +304,10 @@ namespace hydna {
                 server.sin_port = htons(port);
 
                 if (connect(m_connectionFDS, (struct sockaddr *)&server, sizeof(server)) == -1) {
-                    destroy(ChannelError("Could not connect to the host \"" + host + "\""));
+                    ostringstream oss;
+                    oss << port;
+
+                    destroy(ChannelError("Could not connect to the host \"" + host + "\" on the port " + oss.str()));
                 } else {
 #ifdef HYDNADEBUG
                     debugPrint("Connection", 0, "Connected, sending HTTP upgrade request");
@@ -317,11 +327,13 @@ namespace hydna {
         string request = "GET /" + auth + " HTTP/1.1\n"
                          "Connection: upgrade\n"
                          "Upgrade: winksock/1\n"
-                         "Host: " + m_host;
+                         "Host: " + m_host + "\n"
+                         "X-Follow-Redirects: ";
 
-        // Redirects are not supported yet
-        if (true) {
-            request += "\nX-Follow-Redirects: no";
+        if (m_followRedirects) {
+            request += "yes";
+        } else {
+            request += "no";
         }
 
         // End of upgrade request
@@ -351,6 +363,8 @@ namespace hydna {
         char cr = '\r';
         bool fieldsLeft = true;
         bool gotResponse = false;
+        bool gotRedirect = false;
+        string location = "";
 
         while(fieldsLeft) {
             string line;
@@ -390,11 +404,23 @@ namespace hydna {
                         case 101:
                             // Everything is ok, continue.
                             break;
+                        case 300:
                         case 301:
                         case 302:
-                        case 307:
-                            destroy(ChannelError("HTTP redirect is not supported yet"));
-                            return;
+                        case 303:
+                        case 304:
+                            if (!m_followRedirects) {
+                                destroy(ChannelError("Bad handshake (HTTP-redirection disabled)"));
+                                return;
+                            }
+
+                            if (m_attempt > MAX_REDIRECT_ATTEMPTS) {
+                                destroy(ChannelError("Bad handshake (Too many redirect attempts)"));
+                                return;
+                            }
+
+                            gotRedirect = true;
+                            break;
                         default:
                             ostringstream oss;
                             oss << code;
@@ -408,16 +434,49 @@ namespace hydna {
                     std::transform(line.begin(), line.end(), line.begin(), ::tolower);
                     size_t pos;
 
-                    pos = line.find("upgrade: ");
-                    if (pos != string::npos) {
-                        string header = line.substr(9);
-                        if (header != "winksock/1") {
-                            destroy(ChannelError("Bad protocol version: " + header));
-                            return;
+                    if (gotRedirect){
+                        pos = line.find("location: ");
+                        if (pos != string::npos) {
+                            location = line.substr(10);
+                        }
+                    } else {
+                        pos = line.find("upgrade: ");
+                        if (pos != string::npos) {
+                            string header = line.substr(9);
+                            if (header != "winksock/1") {
+                                destroy(ChannelError("Bad protocol version: " + header));
+                                return;
+                            }
                         }
                     }
                 }
             }
+        }
+
+        if (gotRedirect) {
+            m_connected = false;
+
+#ifdef HYDNADEBUG
+        debugPrint("Connection", 0, "Redirected to location: " + location);
+#endif
+
+            URL url = URL::parse(location);
+            string tokens = "";
+
+            if (url.getProtocol() != "http") {
+                if (url.getProtocol() == "https") {
+                    destroy(ChannelError("The protocol HTTPS is not supported"));
+                } else {
+                    destroy(ChannelError("Unknown protocol, " + url.getProtocol()));
+                }
+            }
+
+            if (url.getError() != "") {
+                destroy(ChannelError(url.getError()));
+            }
+
+            connectConnection(url.getHost(), url.getPort(), url.getPath());
+            return;
         }
 
         m_handshaked = true;
@@ -946,5 +1005,6 @@ namespace hydna {
 
     ConnectionMap Connection::m_availableConnections = ConnectionMap();
     pthread_mutex_t Connection::m_connectionMutex;
+    bool Connection::m_followRedirects = true;
 }
 

@@ -8,6 +8,7 @@
 #include "channeldata.h"
 #include "channelsignal.h"
 #include "channelmode.h"
+#include "urlparser.h"
 
 #include "error.h"
 #include "ioerror.h"
@@ -22,7 +23,7 @@ namespace hydna {
     
     using namespace std;
 
-    Channel::Channel() : m_host(""), m_port(80), m_ch(0), m_auth(""), m_message(""), m_connection(NULL), m_connected(false), m_closing(false), m_pendingClose(NULL),
+    Channel::Channel() : m_ch(0), m_message(""), m_connection(NULL), m_connected(false), m_closing(false), m_pendingClose(NULL),
                        m_readable(false), m_writable(false), m_emitable(false), m_error("", 0x0), m_openRequest(NULL)
     {
         pthread_mutex_init(&m_dataMutex, NULL);
@@ -34,6 +35,16 @@ namespace hydna {
         pthread_mutex_destroy(&m_dataMutex);
         pthread_mutex_destroy(&m_signalMutex);
         pthread_mutex_destroy(&m_connectMutex);
+    }
+
+    bool Channel::getFollowRedirects() const
+    {
+        return Connection::m_followRedirects;
+    }
+
+    void Channel::setFollowRedirects(bool value)
+    {
+        Connection::m_followRedirects = value;
     }
     
     bool Channel::isConnected() const {
@@ -113,83 +124,46 @@ namespace hydna {
         m_writable = ((m_mode & ChannelMode::WRITE) == ChannelMode::WRITE);
         m_emitable = ((m_mode & ChannelMode::EMIT) == ChannelMode::EMIT);
 
-        string host = expr;
-        unsigned short port = 80;
-        unsigned int ch = 1;
+        URL url = URL::parse(expr);
         string tokens = "";
-        string auth = "";
+        string chs = "";
+        unsigned int ch;
         size_t pos;
 
-        // Host can be on the form "http://auth@localhost:80/x00112233?token"
-
-        // Take out the protocol
-        pos = host.find("://");
-        if (pos != string::npos) {
-            string protocol = host.substr(0, pos);
-            std::transform(protocol.begin(), protocol.end(), protocol.begin(), ::tolower);
-            host = host.substr(pos + 3);
-
-            if (protocol != "http") {
-                if (protocol == "https") {
-                    throw Error("The protocol HTTPS is not supported");
-                } else {
-                    throw Error("Unknown protocol, " + protocol);
-                }
+        if (url.getProtocol() != "http") {
+            if (url.getProtocol() == "https") {
+                throw Error("The protocol HTTPS is not supported");
+            } else {
+                throw Error("Unknown protocol, " + url.getProtocol());
             }
         }
 
-        // Take out the auth
-        pos = host.find("@");
-        if (pos != string::npos) {
-            auth = host.substr(0, pos);
-            host = host.substr(pos + 1);
+        if (url.getError() != "") {
+            throw Error(url.getError()); 
         }
 
-        // Take out the token
-        pos = host.find_last_of("?");
-        if (pos != string::npos) {
-            tokens = host.substr(pos + 1);
-            host = host.substr(0, pos);
-        }
+        chs = url.getPath();
 
         // Take out the channel
-        pos = host.find("/x");
+        pos = chs.find("x");
         if (pos != string::npos) {
-            istringstream iss(host.substr(pos + 2));
-            host = host.substr(0, pos);
+            istringstream iss(chs.substr(pos + 1));
 
             if ((iss >> setbase(16) >> ch).fail()) {
-               throw Error("Could not read the channel \"" + host.substr(pos + 2) + "\""); 
+                throw Error("Could not read the channel \"" + chs.substr(pos + 1) + "\"");
             }
         } else {
-            pos = host.find_last_of("/");
-            if (pos != string::npos) {
-                istringstream iss(host.substr(pos + 1));
-                host = host.substr(0, pos);
+            istringstream iss(chs);
 
-                if ((iss >> ch).fail()) {
-                   throw Error("Could not read the channel \"" + host.substr(pos + 1) + "\""); 
-                }
+            if ((iss >> ch).fail()) {
+               throw Error("Could not read the channel \"" + chs + "\"");
             }
         }
 
-        // Take out the port
-        pos = host.find_last_of(":");
-        if (pos != string::npos) {
-            istringstream iss(host.substr(pos + 1));
-            host = host.substr(0, pos);
 
-            if ((iss >> port).fail()) {
-               throw Error("Could not read the port \"" + host.substr(pos + 1) + "\""); 
-            }
-        }
-        
-        m_host = host;
-        m_port = port;
+        tokens = url.getToken();
         m_ch = ch;
-        m_auth = auth;
-
-        m_connection = Connection::getConnection(m_host, m_port, m_auth);
+        m_connection = Connection::getConnection(url.getHost(), url.getPort(), url.getAuth());
       
         // Ref count
         m_connection->allocChannel();

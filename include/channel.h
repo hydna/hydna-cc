@@ -1,5 +1,5 @@
-#ifndef HYDNA_STREAM_H
-#define HYDNA_STREAM_H
+#ifndef HYDNA_CHANNEL_H
+#define HYDNA_CHANNEL_H
 
 #include <iostream>
 #include <streambuf>
@@ -27,6 +27,20 @@ namespace hydna {
         Channel();
 
         ~Channel();
+
+        /**
+         *  Checks if redirects should be followed.
+         *
+         *  @return The current status if redirects should be followed or not.
+         */
+        bool getFollowRedirects() const;
+
+        /**
+         *  Sets if redirects should be followed or not.
+         *
+         *  @param value The new follow redirects status.
+         */
+        void setFollowRedirects(bool value);
         
         /**
          *  Checks the connected state for this Channel instance.
@@ -214,10 +228,7 @@ namespace hydna {
          */
         void internalClose();
 
-        std::string m_host;
-        unsigned short m_port;
         unsigned int m_ch;
-        std::string m_auth;
         std::string m_message;
         
         Connection* m_connection;

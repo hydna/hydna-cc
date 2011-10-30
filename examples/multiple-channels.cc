@@ -16,10 +16,10 @@ using namespace std;
 
 int main(int argc, const char* argv[]) {
     Channel channel;
-    channel.connect("localhost/x11221133", ChannelMode::READWRITE);
+    channel.connect("localhost:7010/x11221133", ChannelMode::READWRITE);
 
     Channel channel2;
-    channel2.connect("localhost/x3333", ChannelMode::READWRITE);
+    channel2.connect("localhost:7010/x3333", ChannelMode::READWRITE);
 
     while(!channel.isConnected()) {
         channel.checkForChannelError();

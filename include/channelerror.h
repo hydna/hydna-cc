@@ -1,5 +1,5 @@
-#ifndef HYDNA_STREAMERROR_H
-#define HYDNA_STREAMERROR_H
+#ifndef HYDNA_CHANNELERROR_H
+#define HYDNA_CHANNELERROR_H
 
 #include "ioerror.h"
 

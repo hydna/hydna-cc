@@ -1,5 +1,5 @@
-#ifndef HYDNA_STREAMMODE_H
-#define HYDNA_STREAMMODE_H
+#ifndef HYDNA_CHANNELMODE_H
+#define HYDNA_CHANNELMODE_H
 
 namespace hydna {
   
