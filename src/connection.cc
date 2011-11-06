@@ -18,7 +18,7 @@
 #include "channeldata.h";
 #include "channelerror.h"
 #include "channelsignal.h";
-#include "urlparser.h";
+#include "url.h";
 
 #ifdef HYDNADEBUG
 #include "debughelper.h"
@@ -461,7 +461,6 @@ namespace hydna {
 #endif
 
             URL url = URL::parse(location);
-            string tokens = "";
 
             if (url.getProtocol() != "http") {
                 if (url.getProtocol() == "https") {

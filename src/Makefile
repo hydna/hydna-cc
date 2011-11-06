@@ -2,8 +2,8 @@
 #
 # @author Emanuel Dahlberg, http://github.com/EmanueI
 
-SRCS = connection.cc frame.cc openrequest.cc channel.cc channeldata.cc channelsignal.cc urlparser.cc debughelper.cc
-HDRS = ../include/connection.h ../include/frame.h ../include/openrequest.h ../include/channel.h ../include/channeldata.h ../include/channelsignal.h ../include/channelmode.h ../include/error.h ../include/ioerror.h ../include/channelerror.h ../include/urlparser.h ../include/debughelper.h
+SRCS = connection.cc frame.cc openrequest.cc channel.cc channeldata.cc channelsignal.cc url.cc debughelper.cc
+HDRS = ../include/connection.h ../include/frame.h ../include/openrequest.h ../include/channel.h ../include/channeldata.h ../include/channelsignal.h ../include/channelmode.h ../include/error.h ../include/ioerror.h ../include/channelerror.h ../include/url.h ../include/debughelper.h
 OBJS = $(SRCS:.cc=.o)
 DOBJS= $(SRCS:.cc=DEBUG.o)
 

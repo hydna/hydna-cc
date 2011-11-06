@@ -8,7 +8,7 @@
 #include "channeldata.h"
 #include "channelsignal.h"
 #include "channelmode.h"
-#include "urlparser.h"
+#include "url.h"
 
 #include "error.h"
 #include "ioerror.h"

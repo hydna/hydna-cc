@@ -2,7 +2,7 @@
 #include <iomanip>
 #include <sstream>
 
-#include "urlparser.h"
+#include "url.h"
 
 #ifdef HYDNADEBUG
 #include "debughelper.h"
@@ -108,6 +108,7 @@ namespace hydna {
         }
         
         url.m_path = path;
+        url.m_token = tokens;
         url.m_host = host;
         url.m_port = port;
         url.m_auth = auth;
