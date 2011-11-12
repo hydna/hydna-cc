@@ -16,7 +16,7 @@ namespace hydna {
             std::string msg;
 
             if (code < 7)
-                msg = "Not allowd to open channel";
+                msg = "Not allowed to open channel";
 
             if (data != "" || data.length() != 0) {
                 msg = data;

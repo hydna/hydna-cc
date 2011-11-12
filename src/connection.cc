@@ -356,7 +356,7 @@ namespace hydna {
 
     void Connection::handshakeHandler() {
 #ifdef HYDNADEBUG
-        debugPrint("Connection", 0, "Incoming upgrade reponse");
+        debugPrint("Connection", 0, "Incoming upgrade response");
 #endif
 
         char lf = '\n';
@@ -660,7 +660,7 @@ namespace hydna {
 #endif
 
             if (payload && size > 4) {
-                message = string(payload + 4, size);
+                message = string(payload + 4, size - 4);
             }
         } else {
             pthread_mutex_lock(&m_pendingMutex);
