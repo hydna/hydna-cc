@@ -203,7 +203,7 @@ namespace hydna {
         void openSuccess(unsigned int respch, std::string const &message);
 
         /**
-         *  Internally destroy connection.
+         *  Internally destroy channel.
          *
          *  @param error The cause of the destroy.
          */
