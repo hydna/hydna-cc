@@ -857,16 +857,14 @@ namespace hydna {
 
             if (m_openChannels.count(ch) > 0)
                 channel = m_openChannels[ch];
+            pthread_mutex_unlock(&m_openChannelsMutex);
 
             if (!channel) {
-                pthread_mutex_unlock(&m_openChannelsMutex);
                 destroy(ChannelError("Received unknown channel"));
                 return;
             }
 
             if (flag != Frame::SIG_EMIT && !channel->isClosing()) {
-                pthread_mutex_unlock(&m_openChannelsMutex);
-                
                 Frame frame(ch, Frame::SIGNAL, Frame::SIG_END, payload);
                 try {
                     writeBytes(frame);
@@ -879,7 +877,6 @@ namespace hydna {
             }
 
             processSignalFrame(channel, flag, payload, size);
-            pthread_mutex_unlock(&m_openChannelsMutex);
         }
     }
 
