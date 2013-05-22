@@ -324,10 +324,10 @@ namespace hydna {
         int n = -1;
         unsigned int offset = 0;
 
-        string request = "GET /" + auth + " HTTP/1.1\n"
-                         "Connection: upgrade\n"
-                         "Upgrade: winksock/1\n"
-                         "Host: " + m_host + "\n"
+        string request = "GET /" + auth + " HTTP/1.1\r\n"
+                         "Connection: upgrade\r\n"
+                         "Upgrade: winksock/1\r\n"
+                         "Host: " + m_host + "\r\n"
                          "X-Follow-Redirects: ";
 
         if (m_followRedirects) {
@@ -337,7 +337,7 @@ namespace hydna {
         }
 
         // End of upgrade request
-        request += "\n\n";
+        request += "\r\n\r\n";
 
         data = request.data();
         length = request.size();

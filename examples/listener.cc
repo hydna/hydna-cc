@@ -16,7 +16,11 @@ using namespace std;
 
 int main(int argc, const char* argv[]) {
     Channel channel;
-    channel.connect("localhost:7010/x11221133", ChannelMode::READWRITE);
+    try{
+        channel.connect("public.hydna.net/1", ChannelMode::READWRITE);
+    } catch (std::exception& e) {
+        cout << "could not connect: "<< e.what() << endl;
+    }
 
     while(!channel.isConnected()) {
         channel.checkForChannelError();

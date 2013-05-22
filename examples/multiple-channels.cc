@@ -16,10 +16,19 @@ using namespace std;
 
 int main(int argc, const char* argv[]) {
     Channel channel;
-    channel.connect("localhost:7010/x11221133", ChannelMode::READWRITE);
+    try{
+        channel.connect("public.hydna.net/1", ChannelMode::READWRITE);
+    }catch (std::exception& e) {
+        cout << "could not connect: "<< e.what() << endl;
+    }
 
     Channel channel2;
-    channel2.connect("localhost:7010/x3333", ChannelMode::READWRITE);
+    
+    try{
+        channel2.connect("public.hydna.net/2", ChannelMode::READWRITE);
+    }catch (std::exception& e) {
+        cout << "could not connect: "<< e.what() << endl;
+    }
 
     while(!channel.isConnected()) {
         channel.checkForChannelError();
@@ -31,8 +40,8 @@ int main(int argc, const char* argv[]) {
         sleep(1);
     }
 
-    channel.writeString("Hello");
-    channel2.writeString("World");
+    channel.writeString("Hello world from c++ channel 1");
+    channel2.writeString("Hello world from c++ channel 2");
 
     for (;;) {
         if (!channel.isDataEmpty()) {

@@ -46,7 +46,11 @@ int main(int argc, const char* argv[]) {
         string arg = string(argv[1]);
 
         Channel channel;
-        channel.connect("localhost:7010/x11221133", ChannelMode::READWRITE);
+        try{
+            channel.connect("public.hydna.net/10", ChannelMode::READWRITE);
+        }catch (std::exception& e) {
+            cout << "could not connect: "<< e.what() << endl;
+        }
 
         while(!channel.isConnected()) {
             channel.checkForChannelError();
@@ -56,7 +60,7 @@ int main(int argc, const char* argv[]) {
         int time = 0;
 
         if (arg.compare("receive") == 0) {
-            cout << "Receiving from x11221133" << endl;
+            cout << "Receiving from 10" << endl;
 
             for(;;) {
                 if (!channel.isDataEmpty()) {
@@ -79,7 +83,7 @@ int main(int argc, const char* argv[]) {
                 }
             }
         } else if (arg.compare("send") == 0) {
-            cout << "Sending " << NO_BROADCASTS << " frames to x11221133" << endl;
+            cout << "Sending " << NO_BROADCASTS << " frames to 10" << endl;
 
             time = getmicrosec();
 
