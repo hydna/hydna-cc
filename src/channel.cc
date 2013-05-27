@@ -128,6 +128,8 @@ namespace hydna {
         string tokens = "";
         string chs = "";
         unsigned int ch;
+        string::size_type pos;
+        //int pos;
 
         if (url.getProtocol() != "http") {
             if (url.getProtocol() == "https") {
@@ -144,17 +146,27 @@ namespace hydna {
         chs = url.getPath();
         
         // Take out the channel
+        if(chs.length() == 0 || (chs.length() == 1 && chs[0] == '/')){
+            chs = "1";
+        }
         
-        if (chs.length() > 0) {
+        pos = chs.find("x", 0);
+        
+        if(pos != string::npos){
+            
+            istringstream iss(chs.substr(pos + 1));
+            
+            if ((iss >> setbase(16) >> ch).fail()) {
+                throw Error("Could not read the channel \"" + chs.substr(pos + 1) + "\"");
+            }
+            
+        }else{
             istringstream iss(chs);
 
             if ((iss >> setbase(16) >> ch).fail()) {
                 throw Error("Could not read the channel \"" + chs + "\"");
             }
-        } else {
-            ch = 1;
         }
-
 
         tokens = url.getToken();
         m_ch = ch;
