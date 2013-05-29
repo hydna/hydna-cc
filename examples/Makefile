@@ -2,7 +2,7 @@
 #
 # @author Emanuel Dahlberg, http://github.com/EmanueI
 
-SRCS = hello-world.cc signals.cc listener.cc speed-test.cc multiple-channels.cc
+SRCS = hello-world.cc hello-world-binary.cc signals.cc listener.cc speed-test.cc multiple-channels.cc
 HDRS = 
 OBJS = $(SRCS:.cc=.o)
 DOBJS= $(SRCS:.cc=DEBUG.o)

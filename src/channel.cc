@@ -129,7 +129,6 @@ namespace hydna {
         string chs = "";
         unsigned int ch;
         string::size_type pos;
-        //int pos;
 
         if (url.getProtocol() != "http") {
             if (url.getProtocol() == "https") {
@@ -178,7 +177,7 @@ namespace hydna {
         if (token || tokens == "") {
             frame = new Frame(m_ch, Frame::OPEN, mode,
                                 token, tokenOffset, tokenLength);
-        } else {
+        }else{
             frame = new Frame(m_ch, Frame::OPEN, mode,
                                 tokens.c_str(), 0, tokens.size());
         }
@@ -198,10 +197,14 @@ namespace hydna {
     void Channel::writeBytes(const char* data,
                             unsigned int offset,
                             unsigned int length,
-                            unsigned int priority)
+                            unsigned int priority,
+                            unsigned int type)
     {
         bool result;
-
+        int flag;
+        
+        flag = priority << 1 | type;
+        
         pthread_mutex_lock(&m_connectMutex);
         if (!m_connected || !m_connection) {
             pthread_mutex_unlock(&m_connectMutex);
@@ -214,11 +217,12 @@ namespace hydna {
             throw Error("Channel is not writable");
         }
       
-        if (priority > 3 || priority == 0) {
-            throw RangeError("Priority must be between 1 - 3");
+        if (priority > 3) {
+            throw RangeError("Priority must be between 0 - 3");
         }
-
-        Frame frame(m_ch, Frame::DATA, priority,
+        
+        // channel, 
+        Frame frame(m_ch, Frame::DATA, flag,
                                 data, offset, length);
       
         pthread_mutex_lock(&m_connectMutex);
@@ -229,9 +233,9 @@ namespace hydna {
         if (!result)
             checkForChannelError();
     }
-
-    void Channel::writeString(string const &value) {
-        writeBytes(value.data(), 0, value.length());
+    
+    void Channel::writeString(string const &value, unsigned int priority) {
+        writeBytes(value.data(), 0, value.length(), priority, 1);
     }
     
     void Channel::emitBytes(const char* data,

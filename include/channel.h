@@ -120,14 +120,16 @@ namespace hydna {
         void writeBytes(const char* data,
                                 unsigned int offset,
                                 unsigned int length,
-                                unsigned int prority=1);
+                                unsigned int prority=0,
+                                unsigned int type=0);
 
         /**
          *  Sends string data to the channel.
          *
          *  @param value The string to be sent.
          */
-        void writeString(std::string const &value);
+        void writeString(std::string const &value, unsigned int prority=0);
+        
         
         /**
          *  Sends data signal to the channel.

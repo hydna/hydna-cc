@@ -23,6 +23,10 @@ namespace hydna {
      *  @return The priority of the content.
      */
     int getPriority() const;
+    
+    bool isUtf8Content() const;
+    
+    bool isBinaryContent() const;
 
     /**
      *  Returns the size of the content.
@@ -35,6 +39,7 @@ namespace hydna {
     int m_priority;
     const char* m_content;
     int m_size;
+    bool m_binary;
 
   };
 

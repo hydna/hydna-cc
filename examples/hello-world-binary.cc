@@ -8,7 +8,7 @@
 #include <iostream>
 
 /**
- *  Hello world example
+ *  Hello world example binary
  */
 
 using namespace hydna;
@@ -32,8 +32,10 @@ int main(int argc, const char* argv[]) {
     if (message != "") {
         cout << message << endl;
     }
-
-    channel.writeString("Hello World from c++");
+    
+    std::string value = "Hello World";
+    
+    channel.writeBytes(value.data(), 0, value.length());
 
     for (;;) {
         if (!channel.isDataEmpty()) {
