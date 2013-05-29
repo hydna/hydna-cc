@@ -49,11 +49,6 @@ cd examples
 ./signals
 
 
-This assumes that you have a tcp proxy running on your
-local machine on the port 7010.
-
-
-
 info
 -------------------------------------------------------------------
 All the headers can be found in include/ with comments.
