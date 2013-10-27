@@ -7,7 +7,7 @@ namespace hydna {
    
     ChannelData::ChannelData(int priority, const char* content, int size) : m_priority(priority), m_content(content), m_size(size) {
         
-        m_priority = (priority >> 1);
+        m_priority = priority;
         m_binary = (priority & 1) == 1 ? false : true;
     }
 

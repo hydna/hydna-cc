@@ -230,7 +230,7 @@ namespace hydna {
          */
         void internalClose();
 
-        unsigned int m_ch;
+        std::string m_ch;
         std::string m_message;
         
         Connection* m_connection;
