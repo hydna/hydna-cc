@@ -69,6 +69,10 @@ namespace hydna {
         pthread_mutex_init(&m_openWaitMutex, NULL);
         pthread_mutex_init(&m_pendingMutex, NULL);
         pthread_mutex_init(&m_listeningMutex, NULL);
+        
+        pthread_mutex_init(&m_resolveMutex, NULL);
+        pthread_mutex_init(&m_resolveWaitMutex, NULL);
+        pthread_mutex_init(&m_resolveChannelsMutex, NULL);
     }
 
     Connection::~Connection() {
@@ -80,6 +84,10 @@ namespace hydna {
         pthread_mutex_destroy(&m_openWaitMutex);
         pthread_mutex_destroy(&m_pendingMutex);
         pthread_mutex_destroy(&m_listeningMutex);
+        
+        pthread_mutex_destroy(&m_resolveMutex);
+        pthread_mutex_destroy(&m_resolveWaitMutex);
+        pthread_mutex_destroy(&m_resolveChannelsMutex);
     }
     
     bool Connection::hasHandshaked() const {
@@ -149,6 +157,68 @@ namespace hydna {
         } else {
             pthread_mutex_unlock(&m_channelRefMutex);
         }
+    }
+    
+
+    bool Connection::requestResolve(OpenRequest* request) {
+        
+        string path(request->getPath());
+        
+        OpenRequestQueue* queue;
+        
+#ifdef HYDNADEBUG
+        debugPrint("Connection", 0, "A channel is trying to send a new resolve request");
+#endif      
+        
+        pthread_mutex_unlock(&m_resolveChannelsMutex);
+
+        pthread_mutex_lock(&m_resolveMutex);
+        if (m_pendingResolveRequests.count(path) > 0) {
+            pthread_mutex_unlock(&m_resolveMutex);
+
+#ifdef HYDNADEBUG
+            debugPrint("Connection", 0, "A resolve request is waiting to be sent, queue up the new open request");
+#endif
+            
+            pthread_mutex_lock(&m_resolveWaitMutex);
+            queue = m_resolveWaitQueue[path];
+        
+            if (!queue) {
+                m_resolveWaitQueue[path] = queue = new OpenRequestQueue();
+            } 
+        
+            queue->push(request);
+            pthread_mutex_unlock(&m_resolveWaitMutex);
+        } else if (!m_handshaked) {
+#ifdef HYDNADEBUG
+            debugPrint("Connection", 0, "No connection, queue up the new resolve request");
+#endif
+            m_pendingResolveRequests[path] = request;
+            pthread_mutex_unlock(&m_resolveMutex);
+            
+            if (!m_connecting) {
+                m_connecting = true;
+                connectConnection(m_host, m_port, m_auth);
+            }
+        } else {
+            m_pendingResolveRequests[path] = request;
+            pthread_mutex_unlock(&m_resolveMutex);
+
+#ifdef HYDNADEBUG
+            debugPrint("Connection", 0, "Already connected, sending the new resolve request");
+#endif
+
+            writeBytes(request->getFrame());
+            request->setSent(true);
+        }
+      
+        return m_connected;
+        // on successful resolve
+        
+        // requestOpen
+        
+        // proceed as normal
+        
     }
 
     bool Connection::requestOpen(OpenRequest* request) {
@@ -271,7 +341,7 @@ namespace hydna {
         return found;
     }
 
-    void Connection::connectConnection(std::string const &host, int port, std::string const &auth) {
+    void Connection::connectConnection(string const &host, int port, string const &auth) {
         struct hostent     *he;
         struct sockaddr_in server;
 
@@ -485,16 +555,23 @@ namespace hydna {
         debugPrint("Connection", 0, "Handshake done on connection");
 #endif
 
-        OpenRequestMap::iterator it;
+        OpenRequestPathMap::iterator it;
         OpenRequest* request;
-        for (it = m_pendingOpenRequests.begin(); it != m_pendingOpenRequests.end(); it++) {
+        
+        for (it = m_pendingResolveRequests.begin(); it != m_pendingResolveRequests.end(); it++) {
             request = it->second;
             writeBytes(request->getFrame());
+            
+#ifdef HYDNADEBUG
+        debugPrint("Connection", 0, "Writing bytes for request");
+#endif
 
             if (m_connected) {
                 request->setSent(true);
+                
+                // we need to send resolve request first
 #ifdef HYDNADEBUG
-                debugPrint("Connection", request->getChannelId(), "Open request sent");
+                debugPrint("Connection", request->getChannelId(), "Resolve request sent");
 #endif
             } else {
                 return;
@@ -530,6 +607,7 @@ namespace hydna {
         unsigned int ch;
         int op;
         int flag;
+        int ctype;
 
         char header[headerSize];
         char* payload;
@@ -576,32 +654,61 @@ namespace hydna {
                 }
                 break;
             }
-
+            
+            /*
+            
             ch = ntohl(*(unsigned int*)&header[2]);
+            
+            ctype = 
+                
             op   = header[6] >> 3 & 3;
             flag = header[6] & 7;
-
+            
+            */
+            
+            ch = ntohl(*(unsigned int*)&header[2]);
+            
+            ctype = header[6] >> Frame::CTYPE_BITPOS;
+            op = header[6] >> Frame::OP_BITPOS;
+            flag = header[6] & 7;
+            
+#ifdef HYDNADEBUG          
+            debugPrint("Connection", op, "Received a response...");
+#endif
             switch (op) {
+                
+                case Frame::KEEPALIVE:
+                    break;
 
                 case Frame::OPEN:
 #ifdef HYDNADEBUG
                     debugPrint("Connection", ch, "Received open response");
 #endif
-                    processOpenFrame(ch, flag, payload, size - headerSize);
+                    processOpenFrame(ch, ctype, flag, payload, size - headerSize);
                     break;
 
                 case Frame::DATA:
 #ifdef HYDNADEBUG
                     debugPrint("Connection", ch, "Received data");
 #endif
-                    processDataFrame(ch, flag, payload, size - headerSize);
+                    processDataFrame(ch, ctype, flag, payload, size - headerSize);
                     break;
 
                 case Frame::SIGNAL:
 #ifdef HYDNADEBUG
                     debugPrint("Connection", ch, "Received signal");
 #endif
-                    processSignalFrame(ch, flag, payload, size - headerSize);
+                    processSignalFrame(ch, ctype, flag, payload, size - headerSize);
+                    break;
+                
+                case Frame::RESOLVE:
+                
+#ifdef HYDNADEBUG
+                    debugPrint("Connection", ch, "Received Resolve");
+#endif
+                    
+                    
+                    processResolveFrame(ch, ctype, flag, payload, size - headerSize);
                     break;
             }
 
@@ -612,8 +719,63 @@ namespace hydna {
         debugPrint("Connection", 0, "Listening thread exited");
 #endif
     }
+    
+    void Connection::processResolveFrame(unsigned int ch,
+                                    int ctype,
+                                    int flag,
+                                    const char* payload,
+                                    int size){
+        
+        if (flag != Frame::OPEN_ALLOW) {
+            destroy(ChannelError("Unable to resolve path"));
+            return;
+        }
+        
+        string path = "";
+        
+        if (payload && size > 0) {
+            path = string(payload, size);
+        }
+        
+        OpenRequest* request = NULL;
+        Channel* channel;
+        
+        pthread_mutex_lock(&m_resolveMutex);
+        if (m_pendingResolveRequests.count(path) > 0)
+            request = m_pendingResolveRequests[path];
+        pthread_mutex_unlock(&m_resolveMutex);
+
+        if (!request) {
+            destroy(ChannelError("The server sent an invalid resolve frame"));
+            return;
+        }
+        
+        
+        
+        channel = request->getChannel();
+        
+        
+        
+        if (!strcmp(payload, request->getPath())) {
+            channel->destroy(ChannelError("Server sent wrong path"));
+            return;
+        }
+        
+        cout << "hello.." << endl;
+        
+        if (flag != Frame::OPEN_ALLOW) {
+            channel->destroy(ChannelError("Unable to resolve path"));
+            return;
+        }
+        
+        
+        
+        channel->resolveSuccess(ch, ctype, request->getPath(), request->getPathSize(), request->getToken(), request->getTokenSize());
+        
+    }
 
     void Connection::processOpenFrame(unsigned int ch,
+                                       int ctype,
                                        int errcode,
                                        const char* payload,
                                        int size) {
@@ -621,6 +783,9 @@ namespace hydna {
         Channel* channel;
         unsigned int respch = 0;
         string message = "";
+        
+        //destroy(ChannelError("Testing channel error"));
+        //return;
         
         pthread_mutex_lock(&m_pendingMutex);
         if (m_pendingOpenRequests.count(ch) > 0)
@@ -672,6 +837,8 @@ namespace hydna {
             if (payload && size > 0) {
                 m = string(payload, size);
             }
+            
+            cout << m.c_str() << endl;
 
 #ifdef HYDNADEBUG
             ostringstream oss;
@@ -749,6 +916,7 @@ namespace hydna {
     }
 
     void Connection::processDataFrame(unsigned int ch,
+                                int ctype,
                                 int priority,
                                 const char* payload,
                                 int size) {
@@ -770,12 +938,13 @@ namespace hydna {
             return;
         }
 
-        data = new ChannelData(priority, payload, size);
+        data = new ChannelData(priority, payload, size, ctype);
         channel->addData(data);
     }
 
 
     bool Connection::processSignalFrame(Channel* channel,
+                                    int ctype,
                                     int flag,
                                     const char* payload,
                                     int size)
@@ -800,12 +969,13 @@ namespace hydna {
         if (!channel)
             return false;
 
-        signal = new ChannelSignal(flag, payload, size);
+        signal = new ChannelSignal(flag, payload, size, ctype);
         channel->addSignal(signal);
         return true;
     }
 
     void Connection::processSignalFrame(unsigned int ch,
+                                    int ctype,
                                     int flag,
                                     const char* payload,
                                     int size)
@@ -835,7 +1005,7 @@ namespace hydna {
                     pthread_mutex_unlock(&m_closingMutex);
                 }
 
-                if (processSignalFrame(it->second, flag, payloadCopy, size)) {
+                if (processSignalFrame(it->second, ctype, flag, payloadCopy, size)) {
                     ++it;
                 } else {
                     m_openChannels.erase(it++);
@@ -865,7 +1035,7 @@ namespace hydna {
             }
 
             if (flag != Frame::SIG_EMIT && !channel->isClosing()) {
-                Frame frame(ch, Frame::SIGNAL, Frame::SIG_END, payload);
+                Frame frame(ch, ctype, Frame::SIGNAL, Frame::SIG_END, payload);
                 try {
                     writeBytes(frame);
                 } catch (ChannelError& e) {
@@ -876,7 +1046,7 @@ namespace hydna {
                 return;
             }
 
-            processSignalFrame(channel, flag, payload, size);
+            processSignalFrame(channel, ctype, flag, payload, size);
         }
     }
 
@@ -887,33 +1057,91 @@ namespace hydna {
 
         OpenRequestMap::iterator pending;
         OpenRequestQueueMap::iterator waitqueue;
+        
+        OpenRequestPathMap::iterator resolving;
+        OpenRequestQueuePathMap::iterator resolvewaitqueue;
+        
         ChannelMap::iterator openchannels;
 
 #ifdef HYDNADEBUG
         debugPrint("Connection", 0, "Destroying connection because: " + string(error.what()));
 #endif
-
-        pthread_mutex_lock(&m_pendingMutex);
+        
+        pthread_mutex_lock(&m_resolveMutex);
 #ifdef HYDNADEBUG
         ostringstream oss;
-        oss << m_pendingOpenRequests.size();
-        debugPrint("Connection", 0, "Destroying pendingOpenRequests of size " + oss.str());
+        oss << m_pendingResolveRequests.size();
+        debugPrint("Connection", 0, "Destroying pendingResolveRequests of size " + oss.str());
 #endif
+        resolving = m_pendingResolveRequests.begin();
+        for (; resolving != m_pendingResolveRequests.end(); resolving++) {
+#ifdef HYDNADEBUG
+            
+        debugPrint("Connection", 0, "Destroying channel "+ resolving->first);
+#endif
+            resolving->second->getChannel()->destroy(error);
+        }
+        
+        m_pendingResolveRequests.clear();
+        pthread_mutex_unlock(&m_resolveMutex);
+        
+        //
+        
+        pthread_mutex_lock(&m_resolveWaitMutex);
+#ifdef HYDNADEBUG
+        ostringstream oss2;
+        oss2 << m_resolveWaitQueue.size();
+        debugPrint("Connection", 0, "Destroying waitQueue of size " + oss2.str());
+#endif
+        resolvewaitqueue = m_resolveWaitQueue.begin();
+        for (; resolvewaitqueue != m_resolveWaitQueue.end(); resolvewaitqueue++) {
+            OpenRequestQueue* queue = resolvewaitqueue->second;
+
+            while(!queue->empty()) {
+                queue->front()->getChannel()->destroy(error);
+                queue->pop();
+            }
+        }
+        m_resolveWaitQueue.clear();
+        pthread_mutex_unlock(&m_resolveWaitMutex);
+        
+        //
+        
+        pthread_mutex_lock(&m_pendingMutex);
+#ifdef HYDNADEBUG
+        ostringstream oss3;
+        oss3 << m_pendingOpenRequests.size();
+        debugPrint("Connection", 0, "Destroying pendingOpenRequests of size " + oss3.str());
+#endif
+        
+        cout << "mark" << endl;
+        
+        //if(m_pendingOpenRequests != NULL){
         pending = m_pendingOpenRequests.begin();
+        
+        cout << "try to destroy 1" << endl;
+        
+        //if(pending){
+            
+            cout << "try to destroy 2" << endl;
+        
         for (; pending != m_pendingOpenRequests.end(); pending++) {
 #ifdef HYDNADEBUG
-        debugPrint("Connection", pending->first, "Destroying channel");
-#endif
-            pending->second->getChannel()->destroy(error);
-        }
+        debugPrint("Connection", 0, "Destroying channel " + pending->first);
+#endif      
+            cout << "try to destroy 3" << endl;
+            //pending->second->getChannel()->destroy(error);
+       // }
+    }
         m_pendingOpenRequests.clear();
+        //}
         pthread_mutex_unlock(&m_pendingMutex);
 
         pthread_mutex_lock(&m_openWaitMutex);
 #ifdef HYDNADEBUG
-        ostringstream oss2;
-        oss2 << m_openWaitQueue.size();
-        debugPrint("Connection", 0, "Destroying waitQueue of size " + oss2.str());
+        ostringstream oss4;
+        oss4 << m_openWaitQueue.size();
+        debugPrint("Connection", 0, "Destroying waitQueue of size " + oss4.str());
 #endif
         waitqueue = m_openWaitQueue.begin();
         for (; waitqueue != m_openWaitQueue.end(); waitqueue++) {
@@ -929,9 +1157,9 @@ namespace hydna {
         
         pthread_mutex_lock(&m_openChannelsMutex);
 #ifdef HYDNADEBUG
-        ostringstream oss3;
-        oss3 << m_openChannels.size();
-        debugPrint("Connection", 0, "Destroying openChannels of size " + oss3.str());
+        ostringstream oss5;
+        oss5 << m_openChannels.size();
+        debugPrint("Connection", 0, "Destroying openChannels of size " + oss5.str());
 #endif
         openchannels = m_openChannels.begin();
         for (; openchannels != m_openChannels.end(); openchannels++) {
@@ -984,7 +1212,10 @@ namespace hydna {
             int size = frame.getSize();
             char* data = frame.getData();
             int offset = 0;
-
+            
+            
+            cout << "writing bytes to buffer" << endl;
+            
             while(offset < size && n != 0) {
                 n = write(m_connectionFDS, data + offset, size - offset);
                 offset += n;

@@ -1,14 +1,14 @@
 #include <sstream>
 
 #include "channeldata.h"
+#include "contenttype.h"
 
 namespace hydna {
     using namespace std;
    
-    ChannelData::ChannelData(int priority, const char* content, int size) : m_priority(priority), m_content(content), m_size(size) {
+    ChannelData::ChannelData(int priority, const char* content, int size, int ctype) : m_priority(priority), m_content(content), m_size(size), m_ctype(ctype) {
         
-        m_priority = priority;
-        m_binary = (priority & 1) == 1 ? false : true;
+        m_binary = (ctype == (int)ContentType::BINARY) ? false : true;
     }
 
     int ChannelData::getPriority() const {

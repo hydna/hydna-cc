@@ -8,7 +8,7 @@ namespace hydna {
   
   class ChannelData {
   public:
-    ChannelData(int priority, const char* content, int size);
+    ChannelData(int priority, const char* content, int size, int ctype);
     
     /**
      *  Returns the data associated with this ChannelData instance.
@@ -39,6 +39,7 @@ namespace hydna {
     int m_priority;
     const char* m_content;
     int m_size;
+    int m_ctype;
     bool m_binary;
 
   };

@@ -18,7 +18,7 @@ int main(int argc, const char* argv[]) {
     Channel channel;
     
     try{
-        channel.connect("public.hydna.net/1", ChannelMode::READWRITE);
+        channel.connect("hydnacc.hydna.net/hello", ChannelMode::READWRITE);
     }catch (std::exception& e) {
         cout << "could not connect: "<< e.what() << endl;
     }
@@ -27,13 +27,15 @@ int main(int argc, const char* argv[]) {
         channel.checkForChannelError();
         sleep(1);
     }
+    
+    cout << "We are connected in hello world..." << endl;
 
     string message = channel.getMessage();
     if (message != "") {
         cout << message << endl;
     }
 
-    channel.writeString("Hello World from c++");
+    channel.writeString("Hello World from c++ är e inte cool");
 
     for (;;) {
         if (!channel.isDataEmpty()) {

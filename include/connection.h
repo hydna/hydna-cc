@@ -62,6 +62,16 @@ namespace hydna {
          *  @param ch The channel to dealloc.
          */
         void deallocChannel(unsigned int ch);
+        
+        
+       /**
+        *  Request to resolve a channel.
+        *
+        *  @param request The request to open the channel.
+        *  @return True if request went well, else false.
+        */
+        
+        bool requestResolve(OpenRequest* request);
 
         /**
          *  Request to open a channel.
@@ -128,6 +138,7 @@ namespace hydna {
          *  @param size The size of the content.
          */
         void processOpenFrame(unsigned int ch,
+                                int ctype,
                                 int errcode,
                                 const char* payload,
                                 int size);
@@ -141,6 +152,7 @@ namespace hydna {
          *  @param size The size of the content.
          */
         void processDataFrame(unsigned int ch,
+                            int ctype,
                             int priority,
                             const char* payload,
                             int size);
@@ -155,6 +167,7 @@ namespace hydna {
          *  @return False is something went wrong.
          */
         bool processSignalFrame(Channel* channel,
+                            int ctype,
                             int flag,
                             const char* payload,
                             int size);
@@ -168,10 +181,27 @@ namespace hydna {
          *  @param size The size of the content.
          */
         void processSignalFrame(unsigned int ch,
+                            int ctype,
                             int flag,
                             const char* payload,
                             int size);
-
+                            
+        
+       /**
+        *  Process a resolve frame.
+        *
+        *  @param ch The channel pointer.
+        *  @param flag The flag of the signal.
+        *  @param payload The content of the signal.
+        *  @param size The size of the content.
+        */                    
+        void processResolveFrame(unsigned int ch, 
+                            int ctype,
+                            int flag, 
+                            const char *payload, 
+                            int size);
+            
+        
         /**
          *  Destroy the connection.
          *
@@ -194,11 +224,15 @@ namespace hydna {
         pthread_mutex_t m_openChannelsMutex;
         pthread_mutex_t m_openWaitMutex;
         pthread_mutex_t m_pendingMutex;
+        pthread_mutex_t m_resolveMutex; // new
+        pthread_mutex_t m_resolveWaitMutex; // new
+        pthread_mutex_t m_resolveChannelsMutex; // new
         pthread_mutex_t m_listeningMutex;
 
         bool m_connecting;
         bool m_connected;
         bool m_handshaked;
+        //bool m_resolved; // new
         bool m_destroying;
         bool m_closing;
         bool m_listening;
@@ -208,10 +242,13 @@ namespace hydna {
         std::string m_auth;
         int m_connectionFDS;
         unsigned int m_attempt;
+        unsigned int m_ctype;
 
         OpenRequestMap m_pendingOpenRequests;
+        OpenRequestPathMap m_pendingResolveRequests; // new for the resolve step
         ChannelMap m_openChannels;
         OpenRequestQueueMap m_openWaitQueue;
+        OpenRequestQueuePathMap m_resolveWaitQueue; // resolve que
         
         int m_channelRefCount;
         

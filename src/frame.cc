@@ -6,8 +6,9 @@
 
 namespace hydna {
     using namespace std;
-
+    
     Frame::Frame(unsigned int ch,
+                        unsigned int ctype,
                         unsigned int op,
                         unsigned int flag,
                         const char* payload,
@@ -21,12 +22,12 @@ namespace hydna {
         if (length > PAYLOAD_MAX_LIMIT) {
             throw new RangeError("Payload max limit reached.");
         }
-        
 
         bytes.reserve(length + HEADER_SIZE);
         writeShort(length + HEADER_SIZE);
         writeUnsignedInt(ch);
-        writeByte((op & 3) << 3 | (flag & 7));
+        
+        writeByte(((ctype << Frame::CTYPE_BITPOS) | (op << Frame::OP_BITPOS) | (flag & 7)));
 
         if (payload) {
             writeBytes(payload, offset, length);
@@ -80,6 +81,6 @@ namespace hydna {
         bytes[4] = result[1];
         bytes[5] = result[2];
         bytes[6] = result[3];
-    }
+    }    
 }
 

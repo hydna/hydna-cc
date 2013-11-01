@@ -8,7 +8,7 @@ namespace hydna {
   
   class ChannelSignal {
   public:
-    ChannelSignal(int type, const char* content, int size);
+    ChannelSignal(int type, const char* content, int size, int ctype);
     
     /**
      *  Returns the content associated with this ChannelSignal instance.
@@ -30,11 +30,17 @@ namespace hydna {
      *  @return The size of the content.
      */
     int getSize() const;
+    
+    bool isUtf8Content() const;
+    
+    bool isBinaryContent() const;
 
   private:
     int m_type;
     const char* m_content;
     int m_size;
+    int m_ctype;
+    bool m_binary;
 
   };
 

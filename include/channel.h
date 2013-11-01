@@ -10,6 +10,7 @@
 #include "channeldata.h"
 #include "channelsignal.h"
 #include "channelmode.h"
+#include "contenttype.h"
 #include "channelerror.h"
 
 namespace hydna {
@@ -106,7 +107,6 @@ namespace hydna {
         void connect(std::string const &expr,
                      unsigned int mode=ChannelMode::READ,
                      const char* token=NULL,
-                     unsigned int tokenOffset=0,
                      unsigned int tokenLength=0);
         
         /**
@@ -155,6 +155,13 @@ namespace hydna {
          *  Closes the Channel instance.
          */
         void close();
+        
+       /**
+        *  Channel has been resolved
+        *  go ahead and make openrequest
+        */
+
+        void resolveSuccess(unsigned int ch, unsigned int ctype, const char* path, int path_size, const char* token, int token_size);
 
 
         /**
@@ -203,6 +210,7 @@ namespace hydna {
          *  @param respch The response channel.
          */
         void openSuccess(unsigned int respch, std::string const &message);
+        
 
         /**
          *  Internally destroy channel.
@@ -230,12 +238,14 @@ namespace hydna {
          */
         void internalClose();
 
-        std::string m_ch;
+        unsigned int m_ch;
+        std::string m_path;
         std::string m_message;
         
         Connection* m_connection;
         bool m_connected;
         bool m_closing;
+        bool m_resolved;
         Frame* m_pendingClose;
         
         bool m_readable;
@@ -247,6 +257,7 @@ namespace hydna {
         unsigned int m_mode;
 
         OpenRequest* m_openRequest;
+        OpenRequest* m_resolveRequest;
 
         ChannelDataQueue m_dataQueue;
         ChannelSignalQueue m_signalQueue;
