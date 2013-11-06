@@ -272,11 +272,6 @@ namespace hydna {
         */
                               
         Frame frame(m_ch, ctype, Frame::DATA, priority, data, offset, length);
-                                
-        
-        //frame = new Frame(Frame::RESOLVE_CHANNEL, Frame::CONTENT_TYPE_UTF8, Frame::RESOLVE, 0, chs.c_str(), 0, path_size);
-                                
-        
       
         pthread_mutex_lock(&m_connectMutex);
         Connection* connection = m_connection;
@@ -288,11 +283,10 @@ namespace hydna {
     }
     
     void Channel::writeString(string const &value, unsigned int priority) {
-        // Frame::CONTENT_TYPE_UTF8
         
         cout << "sending: " << value.c_str() << " length: " << value.length() << endl;
-        
-        writeBytes(value.data(), 0, value.length(), priority, 1);
+        // TODO
+        writeBytes(value.data(), 0, value.length(), priority, ContentType::UTF8);
     }
     
     void Channel::emitBytes(const char* data,

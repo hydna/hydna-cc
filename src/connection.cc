@@ -655,17 +655,6 @@ namespace hydna {
                 break;
             }
             
-            /*
-            
-            ch = ntohl(*(unsigned int*)&header[2]);
-            
-            ctype = 
-                
-            op   = header[6] >> 3 & 3;
-            flag = header[6] & 7;
-            
-            */
-            
             ch = ntohl(*(unsigned int*)&header[2]);
             
             ctype = header[6] >> Frame::CTYPE_BITPOS;
@@ -1117,24 +1106,21 @@ namespace hydna {
         cout << "mark" << endl;
         
         //if(m_pendingOpenRequests != NULL){
-        pending = m_pendingOpenRequests.begin();
-        
-        cout << "try to destroy 1" << endl;
-        
-        //if(pending){
-            
+        if(m_pendingOpenRequests.size() > 0){
+            pending = m_pendingOpenRequests.begin();
+             
             cout << "try to destroy 2" << endl;
         
-        for (; pending != m_pendingOpenRequests.end(); pending++) {
+            for (; pending != m_pendingOpenRequests.end(); pending++) {
 #ifdef HYDNADEBUG
         debugPrint("Connection", 0, "Destroying channel " + pending->first);
 #endif      
-            cout << "try to destroy 3" << endl;
-            //pending->second->getChannel()->destroy(error);
-       // }
-    }
+                cout << "try to destroy 3" << endl;
+                //pending->second->getChannel()->destroy(error);
+            }
+        }
         m_pendingOpenRequests.clear();
-        //}
+
         pthread_mutex_unlock(&m_pendingMutex);
 
         pthread_mutex_lock(&m_openWaitMutex);
@@ -1212,7 +1198,6 @@ namespace hydna {
             int size = frame.getSize();
             char* data = frame.getData();
             int offset = 0;
-            
             
             cout << "writing bytes to buffer" << endl;
             
