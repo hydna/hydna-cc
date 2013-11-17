@@ -120,15 +120,15 @@ namespace hydna {
         void writeBytes(const char* data,
                                 unsigned int offset,
                                 unsigned int length,
-                                unsigned int prority=0,
-                                unsigned int type=0);
+                                unsigned int priority=0,
+                                unsigned int ctype=ContentType::BINARY);
 
         /**
          *  Sends string data to the channel.
          *
          *  @param value The string to be sent.
          */
-        void writeString(std::string const &value, unsigned int prority=0);
+        void writeString(std::string const &value, unsigned int priority=0);
         
         
         /**
@@ -161,7 +161,7 @@ namespace hydna {
         *  go ahead and make openrequest
         */
 
-        void resolveSuccess(unsigned int ch, unsigned int ctype, const char* path, int path_size, const char* token, int token_size);
+        void resolveSuccess(unsigned int ch, const char* path, int path_size, const char* token, int token_size);
 
 
         /**
@@ -239,7 +239,9 @@ namespace hydna {
         void internalClose();
 
         unsigned int m_ch;
+        
         std::string m_path;
+        std::string m_token;
         std::string m_message;
         
         Connection* m_connection;

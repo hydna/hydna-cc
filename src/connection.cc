@@ -184,6 +184,7 @@ namespace hydna {
             queue = m_resolveWaitQueue[path];
         
             if (!queue) {
+                //m_resolveWaitQueue[path] = queue = new OpenRequestQueue();
                 m_resolveWaitQueue[path] = queue = new OpenRequestQueue();
             } 
         
@@ -656,6 +657,8 @@ namespace hydna {
             }
             
             ch = ntohl(*(unsigned int*)&header[2]);
+                    
+            cout << "THE PAYLOAD: " << payload << endl;
             
             ctype = header[6] >> Frame::CTYPE_BITPOS;
             op = header[6] >> Frame::OP_BITPOS;
@@ -673,7 +676,7 @@ namespace hydna {
 #ifdef HYDNADEBUG
                     debugPrint("Connection", ch, "Received open response");
 #endif
-                    processOpenFrame(ch, ctype, flag, payload, size - headerSize);
+                    processOpenFrame(ch, flag, payload, size - headerSize);
                     break;
 
                 case Frame::DATA:
@@ -694,10 +697,12 @@ namespace hydna {
                 
 #ifdef HYDNADEBUG
                     debugPrint("Connection", ch, "Received Resolve");
+                    // TODO remove debug
+                    cout << "THE CHANNEL: " << std::dec << ch << endl;
 #endif
                     
                     
-                    processResolveFrame(ch, ctype, flag, payload, size - headerSize);
+                    processResolveFrame(ch, flag, payload, size - headerSize);
                     break;
             }
 
@@ -710,61 +715,62 @@ namespace hydna {
     }
     
     void Connection::processResolveFrame(unsigned int ch,
-                                    int ctype,
                                     int flag,
                                     const char* payload,
                                     int size){
+
         
         if (flag != Frame::OPEN_ALLOW) {
+            cout << "processresolve -> flag is wrong" << endl;
             destroy(ChannelError("Unable to resolve path"));
             return;
         }
         
         string path = "";
         
+        cout << "processresolve -> getting payload" << endl;
         if (payload && size > 0) {
             path = string(payload, size);
         }
+        
+        cout << "processresolve -> payload retreived" << endl;
         
         OpenRequest* request = NULL;
         Channel* channel;
         
         pthread_mutex_lock(&m_resolveMutex);
-        if (m_pendingResolveRequests.count(path) > 0)
+        if (m_pendingResolveRequests.count(path) > 0) {
             request = m_pendingResolveRequests[path];
+        }
         pthread_mutex_unlock(&m_resolveMutex);
+        
+        cout << "processresolve -> request gotten" << endl;
 
         if (!request) {
+            cout << "processresolve -> request is wrong" << endl;
             destroy(ChannelError("The server sent an invalid resolve frame"));
             return;
         }
         
-        
-        
         channel = request->getChannel();
         
+        //int lol = strcmp(payload, request->getPath());
+        int lol = strcmp(path.c_str(), request->getPath());
         
+        cout << "srtcmp " << lol << endl;
         
-        if (!strcmp(payload, request->getPath())) {
+        if (strcmp(path.c_str(), request->getPath()) != 0) {
+            cout << "processresolve -> server sent wrong path " << request->getPath() << ":" << payload << endl;
             channel->destroy(ChannelError("Server sent wrong path"));
             return;
         }
         
-        cout << "hello.." << endl;
-        
-        if (flag != Frame::OPEN_ALLOW) {
-            channel->destroy(ChannelError("Unable to resolve path"));
-            return;
-        }
-        
-        
-        
-        channel->resolveSuccess(ch, ctype, request->getPath(), request->getPathSize(), request->getToken(), request->getTokenSize());
+        cout << "processresolve -> trying to resolve success" << endl;
+        channel->resolveSuccess(ch, request->getPath(), request->getPathSize(), request->getToken(), request->getTokenSize());
         
     }
 
     void Connection::processOpenFrame(unsigned int ch,
-                                       int ctype,
                                        int errcode,
                                        const char* payload,
                                        int size) {
@@ -777,8 +783,9 @@ namespace hydna {
         //return;
         
         pthread_mutex_lock(&m_pendingMutex);
-        if (m_pendingOpenRequests.count(ch) > 0)
+        if (m_pendingOpenRequests.count(ch) > 0) {
             request = m_pendingOpenRequests[ch];
+        }
         pthread_mutex_unlock(&m_pendingMutex);
 
         if (!request) {
@@ -794,6 +801,8 @@ namespace hydna {
             if (payload && size > 0) {
                 message = string(payload, size);
             }
+        
+        // TODO remove redirect
         } else if (errcode == Frame::OPEN_REDIRECT) {
             if (!payload || size < 4) {
                 destroy(ChannelError("Expected redirect channel from the server"));
@@ -809,7 +818,7 @@ namespace hydna {
             ostringstream oss2;
             oss2 << respch;
 
-            debugPrint("Connection",     ch, "Redirected from " + oss.str());
+            debugPrint("Connection", ch, "Redirected from " + oss.str());
             debugPrint("Connection", respch, "             to " + oss2.str());
 #endif
 
@@ -826,13 +835,12 @@ namespace hydna {
             if (payload && size > 0) {
                 m = string(payload, size);
             }
-            
-            cout << m.c_str() << endl;
 
 #ifdef HYDNADEBUG
             ostringstream oss;
             oss << errcode;
-            debugPrint("Connection", ch, "The server rejected the open request, errorcode " + oss.str());
+            debugPrint("Connection", ch, "The server rejected the open request, error code " + oss.str());
+            debugPrint("Connection", ch, "The server rejected the open request, error message " + m);
 #endif
 
             ChannelError error = ChannelError::fromOpenError(errcode, m);

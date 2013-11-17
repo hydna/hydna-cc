@@ -138,7 +138,6 @@ namespace hydna {
          *  @param size The size of the content.
          */
         void processOpenFrame(unsigned int ch,
-                                int ctype,
                                 int errcode,
                                 const char* payload,
                                 int size);
@@ -195,8 +194,7 @@ namespace hydna {
         *  @param payload The content of the signal.
         *  @param size The size of the content.
         */                    
-        void processResolveFrame(unsigned int ch, 
-                            int ctype,
+        void processResolveFrame(unsigned int ch,
                             int flag, 
                             const char *payload, 
                             int size);
@@ -232,7 +230,7 @@ namespace hydna {
         bool m_connecting;
         bool m_connected;
         bool m_handshaked;
-        //bool m_resolved; // new
+        bool m_resolved; // new
         bool m_destroying;
         bool m_closing;
         bool m_listening;

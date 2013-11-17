@@ -29,6 +29,8 @@ namespace hydna {
         pthread_mutex_init(&m_dataMutex, NULL);
         pthread_mutex_init(&m_signalMutex, NULL);
         pthread_mutex_init(&m_connectMutex, NULL);
+        
+        m_resolved = false;
     }
 
     Channel::~Channel() {
@@ -124,8 +126,8 @@ namespace hydna {
         m_emitable = ((m_mode & ChannelMode::EMIT) == ChannelMode::EMIT);
 
         URL url = URL::parse(expr);
-        string tokens = "";
-        string chs = "";
+        //string tokens = "";
+        //string chs = "";
 
         if (url.getProtocol() != "http") {
             if (url.getProtocol() == "https") {
@@ -139,33 +141,13 @@ namespace hydna {
             throw Error(url.getError()); 
         }
 
-        chs = url.getPath();
+        m_path = url.getPath();
         
-        // Take out the channel
-        if(chs.length() == 0 || (chs.length() == 1 && chs[0] != '/')){ // fixed channel
-            chs = "/";
+        if (m_path.length() == 0 || (m_path.length() == 1 && m_path[0] != '/')) {
+            m_path = "/";
         }
-        
-        /*
-        pos = chs.find("x", 0);
-        
-        if(pos != string::npos){
-            
-            istringstream iss(chs.substr(pos + 1));
-            
-            if ((iss >> setbase(16) >> ch).fail()) {
-                throw Error("Could not read the channel \"" + chs.substr(pos + 1) + "\"");
-            }
-            
-        }else{
-            istringstream iss(chs);
 
-            if ((iss >> setbase(16) >> ch).fail()) {
-                throw Error("Could not read the channel \"" + chs + "\"");
-            }
-        }*/
-
-        tokens = url.getToken();
+        m_token = url.getToken();
 
         m_ch = Frame::RESOLVE_CHANNEL;
         m_connection = Connection::getConnection(url.getHost(), url.getPort(), url.getAuth());
@@ -173,24 +155,12 @@ namespace hydna {
         // Ref count
         m_connection->allocChannel();
         
-        /*
+        frame = new Frame(Frame::RESOLVE_CHANNEL, ContentType::UTF8, Frame::RESOLVE, 0, m_path.c_str(), 0, m_path.length());
         
-        if (token || tokens == "") {
-            frame = new Frame(m_ch, Frame::OPEN, mode,
-                                token, tokenOffset, tokenLength);
-        }else{
-            frame = new Frame(m_ch, Frame::OPEN, mode,
-                                tokens.c_str(), 0, tokens.size());
-        }*/
-        
-        unsigned int path_size = chs.length();
-        
-        frame = new Frame(Frame::RESOLVE_CHANNEL, ContentType::UTF8, Frame::RESOLVE, 0, chs.c_str(), 0, path_size);
-        
-        if (token || tokens == "") {
-            request = new OpenRequest(this, m_ch, chs.c_str(), chs.length(), token, tokenLength, frame);
-        }else{
-            request = new OpenRequest(this, m_ch, chs.c_str(), chs.length(), tokens.c_str(), tokens.length(), frame);
+        if (token || m_token == "") {
+            request = new OpenRequest(this, m_ch, m_path.c_str(), m_path.length(), token, tokenLength, frame);
+        } else {
+            request = new OpenRequest(this, m_ch, m_path.c_str(), m_path.length(), m_token.c_str(), m_token.length(), frame);
         }
 
         m_error = ChannelError("", 0x0);
@@ -203,7 +173,7 @@ namespace hydna {
         m_resolveRequest = request;
     }
     
-    void Channel::resolveSuccess(unsigned int ch, unsigned int ctype, const char* path, int path_size, const char* token, int token_size) {
+    void Channel::resolveSuccess(unsigned int ch, const char* path, int path_size, const char* token, int token_size) {
         
         if(m_resolved){
             throw Error("Channel already resolved");
@@ -216,7 +186,7 @@ namespace hydna {
         
         m_resolved = true;
                                                             
-        frame = new Frame(m_ch, ctype, Frame::OPEN, m_mode, path, 0, path_size);
+        frame = new Frame(m_ch, ContentType::UTF8, Frame::OPEN, m_mode, path, 0, path_size);
         
         request = new OpenRequest(this, m_ch, path, path_size, token, token_size, frame);
         
@@ -237,14 +207,9 @@ namespace hydna {
                             unsigned int offset,
                             unsigned int length,
                             unsigned int priority,
-                            unsigned int type)
+                            unsigned int ctype)
     {
         bool result;
-        int flag;
-        
-        flag = priority << 1 | type;
-        
-        
         
         pthread_mutex_lock(&m_connectMutex);
         if (!m_connected || !m_connection) {
@@ -262,15 +227,6 @@ namespace hydna {
             throw RangeError("Priority must be between 0 - 3");
         }
         
-        // TODO
-        unsigned int ctype = ContentType::UTF8;
-        
-        // channel, TODO check ctype here...
-        /*
-        Frame frame(m_ch, 0, Frame::DATA, flag,
-                                data, offset, length);
-        */
-                              
         Frame frame(m_ch, ctype, Frame::DATA, priority, data, offset, length);
       
         pthread_mutex_lock(&m_connectMutex);
@@ -278,14 +234,13 @@ namespace hydna {
         pthread_mutex_unlock(&m_connectMutex);
         result = connection->writeBytes(frame);
 
-        if (!result)
+        if (!result) {
             checkForChannelError();
+        }
     }
     
     void Channel::writeString(string const &value, unsigned int priority) {
         
-        cout << "sending: " << value.c_str() << " length: " << value.length() << endl;
-        // TODO
         writeBytes(value.data(), 0, value.length(), priority, ContentType::UTF8);
     }
     
