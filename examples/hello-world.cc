@@ -27,19 +27,15 @@ int main(int argc, const char* argv[]) {
         channel.checkForChannelError();
         sleep(1);
     }
-    
-    cout << "We are connected in hello world..." << endl;
 
     string message = channel.getMessage();
     if (message != "") {
         cout << message << endl;
     }
     
-    string str = "12345 789";
-    
-    cout << std::dec << str.length() << endl;
+    string str = "Hello World C++";
 
-    channel.writeString(str);
+    //channel.writeString(str);
 
     for (;;) {
         if (!channel.isDataEmpty()) {

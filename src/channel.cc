@@ -152,7 +152,7 @@ namespace hydna {
       
         // Ref count
         m_connection->allocChannel();
-        
+
         frame = new Frame(Frame::RESOLVE_CHANNEL, ContentType::UTF8, Frame::RESOLVE, 0, m_path.c_str(), 0, m_path.length());
         
         if (token || m_token == "") {

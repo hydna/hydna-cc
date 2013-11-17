@@ -655,12 +655,17 @@ namespace hydna {
             op = header[6] >> Frame::OP_BITPOS;
             flag = header[6] & 7;
             
-#ifdef HYDNADEBUG          
-            debugPrint("Connection", op, "Received a response...");
+#ifdef HYDNADEBUG
+            ostringstream oss;
+            oss << op;  
+            debugPrint("Connection", ch, "Received a response with op code: "+oss.str());
 #endif
             switch (op) {
                 
                 case Frame::KEEPALIVE:
+#ifdef HYDNADEBUG
+                    debugPrint("Connection", ch, "Received heartbeat");
+#endif                
                     break;
 
                 case Frame::OPEN:
@@ -688,8 +693,6 @@ namespace hydna {
                 
 #ifdef HYDNADEBUG
                     debugPrint("Connection", ch, "Received Resolve");
-                    // TODO remove debug
-                    cout << "THE CHANNEL: " << std::dec << ch << endl;
 #endif
                     
                     processResolveFrame(ch, flag, payload, size - headerSize);
