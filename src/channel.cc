@@ -139,7 +139,7 @@ namespace hydna {
             throw Error(url.getError()); 
         }
 
-        m_path = url.getPath();
+        m_path = "/" + url.getPath();
         
         if (m_path.length() == 0 || (m_path.length() == 1 && m_path[0] != '/')) {
             m_path = "/";
