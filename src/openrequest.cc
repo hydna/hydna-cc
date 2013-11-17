@@ -18,12 +18,6 @@ namespace hydna {
                             m_token_size(token_size),
                             m_frame(frame){
         
-        //std::string m_path_str(path, path_size);
-        
-        //strcpy(m_path, path);
-        
-        //strcpy(m_token, token);
-        
         m_sent = false;
     }
 

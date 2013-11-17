@@ -162,7 +162,7 @@ namespace hydna {
 
     bool Connection::requestResolve(OpenRequest* request) {
         
-        string path(request->getPath());
+        string path(request->getPath(), request->getPathSize());
         
         OpenRequestQueue* queue;
         
@@ -184,7 +184,6 @@ namespace hydna {
             queue = m_resolveWaitQueue[path];
         
             if (!queue) {
-                //m_resolveWaitQueue[path] = queue = new OpenRequestQueue();
                 m_resolveWaitQueue[path] = queue = new OpenRequestQueue();
             } 
         
@@ -214,12 +213,6 @@ namespace hydna {
         }
       
         return m_connected;
-        // on successful resolve
-        
-        // requestOpen
-        
-        // proceed as normal
-        
     }
 
     bool Connection::requestOpen(OpenRequest* request) {
@@ -295,15 +288,15 @@ namespace hydna {
         }
       
         pthread_mutex_lock(&m_openWaitMutex);
-        if (m_openWaitQueue.count(channelcomp) > 0)
+        if (m_openWaitQueue.count(channelcomp) > 0) {
             queue = m_openWaitQueue[channelcomp];
-      
+        }
         pthread_mutex_lock(&m_pendingMutex);
         if (m_pendingOpenRequests.count(channelcomp) > 0) {
             delete m_pendingOpenRequests[channelcomp];
             m_pendingOpenRequests.erase(channelcomp);
         
-            if (queue && queue->size() > 0)  {
+            if (queue && queue->size() > 0) {
                 m_pendingOpenRequests[channelcomp] = queue->front();
                 queue->pop();
             }
@@ -657,8 +650,6 @@ namespace hydna {
             }
             
             ch = ntohl(*(unsigned int*)&header[2]);
-                    
-            cout << "THE PAYLOAD: " << payload << endl;
             
             ctype = header[6] >> Frame::CTYPE_BITPOS;
             op = header[6] >> Frame::OP_BITPOS;
@@ -701,7 +692,6 @@ namespace hydna {
                     cout << "THE CHANNEL: " << std::dec << ch << endl;
 #endif
                     
-                    
                     processResolveFrame(ch, flag, payload, size - headerSize);
                     break;
             }
@@ -721,19 +711,15 @@ namespace hydna {
 
         
         if (flag != Frame::OPEN_ALLOW) {
-            cout << "processresolve -> flag is wrong" << endl;
             destroy(ChannelError("Unable to resolve path"));
             return;
         }
         
         string path = "";
         
-        cout << "processresolve -> getting payload" << endl;
         if (payload && size > 0) {
             path = string(payload, size);
         }
-        
-        cout << "processresolve -> payload retreived" << endl;
         
         OpenRequest* request = NULL;
         Channel* channel;
@@ -743,29 +729,21 @@ namespace hydna {
             request = m_pendingResolveRequests[path];
         }
         pthread_mutex_unlock(&m_resolveMutex);
-        
-        cout << "processresolve -> request gotten" << endl;
 
         if (!request) {
-            cout << "processresolve -> request is wrong" << endl;
             destroy(ChannelError("The server sent an invalid resolve frame"));
             return;
         }
         
         channel = request->getChannel();
         
-        //int lol = strcmp(payload, request->getPath());
-        int lol = strcmp(path.c_str(), request->getPath());
-        
-        cout << "srtcmp " << lol << endl;
-        
         if (strcmp(path.c_str(), request->getPath()) != 0) {
-            cout << "processresolve -> server sent wrong path " << request->getPath() << ":" << payload << endl;
+            // TODO remove debug line
+            //cout << "processresolve -> server sent wrong path " << request->getPath() << ":" << payload << endl;
             channel->destroy(ChannelError("Server sent wrong path"));
             return;
         }
         
-        cout << "processresolve -> trying to resolve success" << endl;
         channel->resolveSuccess(ch, request->getPath(), request->getPathSize(), request->getToken(), request->getTokenSize());
         
     }
@@ -779,6 +757,7 @@ namespace hydna {
         unsigned int respch = 0;
         string message = "";
         
+        // TODO remove debug test line
         //destroy(ChannelError("Testing channel error"));
         //return;
         
@@ -1110,9 +1089,7 @@ namespace hydna {
         oss3 << m_pendingOpenRequests.size();
         debugPrint("Connection", 0, "Destroying pendingOpenRequests of size " + oss3.str());
 #endif
-        
-        cout << "mark" << endl;
-        
+        // TODO check error reports
         //if(m_pendingOpenRequests != NULL){
         if(m_pendingOpenRequests.size() > 0){
             pending = m_pendingOpenRequests.begin();
@@ -1206,8 +1183,6 @@ namespace hydna {
             int size = frame.getSize();
             char* data = frame.getData();
             int offset = 0;
-            
-            cout << "writing bytes to buffer" << endl;
             
             while(offset < size && n != 0) {
                 n = write(m_connectionFDS, data + offset, size - offset);

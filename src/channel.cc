@@ -126,8 +126,6 @@ namespace hydna {
         m_emitable = ((m_mode & ChannelMode::EMIT) == ChannelMode::EMIT);
 
         URL url = URL::parse(expr);
-        //string tokens = "";
-        //string chs = "";
 
         if (url.getProtocol() != "http") {
             if (url.getProtocol() == "https") {
@@ -244,6 +242,7 @@ namespace hydna {
         writeBytes(value.data(), 0, value.length(), priority, ContentType::UTF8);
     }
     
+    // TODO check ctype
     void Channel::emitBytes(const char* data,
                             unsigned int offset,
                             unsigned int length)
@@ -262,8 +261,6 @@ namespace hydna {
             throw Error("You do not have permission to send signals");
         }
         
-        
-        // TODO check ctype
         Frame frame(m_ch, 0, Frame::SIGNAL, Frame::SIG_EMIT,
                             data, offset, length);
 
@@ -343,8 +340,6 @@ namespace hydna {
         m_ch = respch;
         m_connected = true;
         m_message = message;
-        
-        cout << "WE ARE OPEN FOR BUSINESS" << endl;
       
         if (m_pendingClose) {
             frame = m_pendingClose;

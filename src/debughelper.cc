@@ -15,7 +15,7 @@ void debugPrint(string c, unsigned int ch, string msg) {
     cout.width(8);
     cout.fill(' ');
     cout.setf(ios::right);
-    cout << hex << ch;
+    cout << ch;
     cout << ": " << msg << endl;    
 }
 
