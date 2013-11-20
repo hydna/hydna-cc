@@ -1,5 +1,5 @@
-#include "frame.h";
-#include "channel.h";
+#include "frame.h"
+#include "channel.h"
 
 namespace hydna {
     

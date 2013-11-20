@@ -26,7 +26,7 @@ static const string CONTENT = "fjhksdffkhjfhjsdkahjkfsadjhksfjhfsdjhlasfhjlksadf
 int getmicrosec() {
     int result = 0;
     struct timeval tv;
-    gettimeofday(&tv, (void *)NULL);
+    gettimeofday(&tv, 0);
 
     result += (tv.tv_sec - 0) * 1000000;
     result += (tv.tv_usec - 0);

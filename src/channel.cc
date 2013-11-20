@@ -3,7 +3,7 @@
 #include <sstream>
 
 #include "channel.h"
-#include "frame.h";
+#include "frame.h"
 #include "openrequest.h"
 #include "channeldata.h"
 #include "channelsignal.h"

@@ -1,6 +1,7 @@
 #include <pthread.h>
 #include <iomanip>
 #include <sstream>
+#include <algorithm>
 
 #include "url.h"
 

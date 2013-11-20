@@ -4,6 +4,8 @@
 #include <iostream>
 #include <streambuf>
 #include <map>
+#include <unistd.h>
+#include <string.h>
 
 #include "openrequest.h"
 #include "channelerror.h"
