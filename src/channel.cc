@@ -242,8 +242,8 @@ namespace hydna {
         writeBytes(value.data(), 0, value.length(), priority, ContentType::UTF8);
     }
     
-    // TODO check ctype
     void Channel::emitBytes(const char* data,
+                            unsigned int ctype,
                             unsigned int offset,
                             unsigned int length)
     {
@@ -261,7 +261,7 @@ namespace hydna {
             throw Error("You do not have permission to send signals");
         }
         
-        Frame frame(m_ch, 0, Frame::SIGNAL, Frame::SIG_EMIT,
+        Frame frame(m_ch, ctype, Frame::SIGNAL, Frame::SIG_EMIT,
                             data, offset, length);
 
         pthread_mutex_lock(&m_connectMutex);
@@ -274,7 +274,7 @@ namespace hydna {
     }
 
     void Channel::emitString(string const &value) {
-        emitBytes(value.data(), 0, value.length());
+        emitBytes(value.data(), ContentType::UTF8, 0, value.length());
     }
 
     void Channel::close() {

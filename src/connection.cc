@@ -741,8 +741,6 @@ namespace hydna {
         channel = request->getChannel();
         
         if (strcmp(path.c_str(), request->getPath()) != 0) {
-            // TODO remove debug line
-            //cout << "processresolve -> server sent wrong path " << request->getPath() << ":" << payload << endl;
             channel->destroy(ChannelError("Server sent wrong path"));
             return;
         }
@@ -759,10 +757,6 @@ namespace hydna {
         Channel* channel;
         unsigned int respch = 0;
         string message = "";
-        
-        // TODO remove debug test line
-        //destroy(ChannelError("Testing channel error"));
-        //return;
         
         pthread_mutex_lock(&m_pendingMutex);
         if (m_pendingOpenRequests.count(ch) > 0) {
@@ -784,7 +778,6 @@ namespace hydna {
                 message = string(payload, size);
             }
         
-        // TODO remove redirect
         } else if (errcode == Frame::OPEN_REDIRECT) {
             if (!payload || size < 4) {
                 destroy(ChannelError("Expected redirect channel from the server"));
@@ -1092,19 +1085,15 @@ namespace hydna {
         oss3 << m_pendingOpenRequests.size();
         debugPrint("Connection", 0, "Destroying pendingOpenRequests of size " + oss3.str());
 #endif
-        // TODO check error reports
-        //if(m_pendingOpenRequests != NULL){
+        
         if(m_pendingOpenRequests.size() > 0){
             pending = m_pendingOpenRequests.begin();
-             
-            cout << "try to destroy 2" << endl;
         
             for (; pending != m_pendingOpenRequests.end(); pending++) {
 #ifdef HYDNADEBUG
         debugPrint("Connection", 0, "Destroying channel " + pending->first);
 #endif      
-                cout << "try to destroy 3" << endl;
-                //pending->second->getChannel()->destroy(error);
+                pending->second->getChannel()->destroy(error);
             }
         }
         m_pendingOpenRequests.clear();

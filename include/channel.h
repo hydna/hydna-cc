@@ -140,6 +140,7 @@ namespace hydna {
          *  @param type The type of the signal.
          */
         void emitBytes(const char* data,
+                                unsigned int ctype=ContentType::BINARY,
                                 unsigned int offset=0,
                                 unsigned int length=0);
 
