@@ -9,8 +9,8 @@ DOBJS= $(SRCS:.cc=DEBUG.o)
 
 CXX = g++
 CXXFLAGS = -g -Wall -ansi -I../include/
-LDFLAGS = -L../lib -lhydna
-DEBUGLDFLAGS = -L../lib -lhydnad
+LDFLAGS = -L../lib -lhydna -lpthread
+DEBUGLDFLAGS = -L../lib -lhydnad -lpthread
 TARGET = $(OBJS:.o=)
 DEBUGTARGET = $(DOBJS:DEBUG.o=DEBUG)
 
