@@ -184,7 +184,7 @@ namespace hydna {
         
         m_resolved = true;
                                                             
-        frame = new Frame(m_ch, ContentType::UTF8, Frame::OPEN, m_mode, path, 0, path_size);
+        frame = new Frame(m_ch, ContentType::UTF8, Frame::OPEN, m_mode, token, 0, token_size);
         
         request = new OpenRequest(this, m_ch, path, path_size, token, token_size, frame);
         

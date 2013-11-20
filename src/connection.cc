@@ -170,7 +170,7 @@ namespace hydna {
         debugPrint("Connection", 0, "A channel is trying to send a new resolve request");
 #endif      
         
-        pthread_mutex_unlock(&m_resolveChannelsMutex);
+        //pthread_mutex_unlock(&m_resolveChannelsMutex);
 
         pthread_mutex_lock(&m_resolveMutex);
         if (m_pendingResolveRequests.count(path) > 0) {
@@ -692,7 +692,7 @@ namespace hydna {
                 case Frame::RESOLVE:
                 
 #ifdef HYDNADEBUG
-                    debugPrint("Connection", ch, "Received Resolve");
+                    debugPrint("Connection", ch, "Received esolve");
 #endif
                     
                     processResolveFrame(ch, flag, payload, size - headerSize);

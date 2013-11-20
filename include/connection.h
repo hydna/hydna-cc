@@ -240,7 +240,6 @@ namespace hydna {
         std::string m_auth;
         int m_connectionFDS;
         unsigned int m_attempt;
-        unsigned int m_ctype;
 
         OpenRequestMap m_pendingOpenRequests;
         OpenRequestPathMap m_pendingResolveRequests; // new for the resolve step

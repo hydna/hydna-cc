@@ -160,6 +160,8 @@ namespace hydna {
         *  Channel has been resolved
         *  go ahead and make openrequest
         */
+        
+        // TODO move method
 
         void resolveSuccess(unsigned int ch, const char* path, int path_size, const char* token, int token_size);
 
