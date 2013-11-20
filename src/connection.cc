@@ -614,8 +614,8 @@ namespace hydna {
         pthread_mutex_unlock(&m_listeningMutex);
 
         for (;;) {
-            while(offset < headerSize && n > 0) {
-                n = read(m_connectionFDS, header + offset, headerSize - offset);
+            while(offset < headerSize + Frame::LENGTH_OFFSET && n > 0) {
+                n = read(m_connectionFDS, header + offset, headerSize + Frame::LENGTH_OFFSET - offset);
                 offset += n;
             }
 
@@ -633,8 +633,8 @@ namespace hydna {
             size = ntohs(*(unsigned short*)&header[0]);
             payload = new char[size - headerSize];
 
-            while(offset < size && n > 0) {
-                n = read(m_connectionFDS, payload + offset - headerSize, size - offset);
+            while(offset < size + Frame::LENGTH_OFFSET && n > 0) {
+                n = read(m_connectionFDS, payload + offset - (headerSize + Frame::LENGTH_OFFSET), (size + Frame::LENGTH_OFFSET) - offset);
                 offset += n;
             }
 
@@ -642,7 +642,7 @@ namespace hydna {
                 pthread_mutex_lock(&m_listeningMutex);
                 if (m_listening) {
                     pthread_mutex_unlock(&m_listeningMutex);
-                    destroy(ChannelError("Could not read from the connection"));
+                    destroy(ChannelError("Could not read from the connection DATA"));
                 } else {
                     pthread_mutex_unlock(&m_listeningMutex);
                 }
@@ -652,12 +652,8 @@ namespace hydna {
             ch = ntohl(*(unsigned int*)&header[2]);
             
             ctype = header[6] >> Frame::CTYPE_BITPOS;
-            //op = header[6] >> Frame::OP_BITPOS;
-            //op = TAKE_N_BITS_FROM(header[6], 3, 3);
             op = (header[6] >> Frame::OP_BITPOS) & Frame::OP_BITMASK;
             flag = header[6] & 7;
-            
-            cout << "op:" << op << endl;
             
 #ifdef HYDNADEBUG
             ostringstream oss;
@@ -696,7 +692,7 @@ namespace hydna {
                 case Frame::RESOLVE:
                 
 #ifdef HYDNADEBUG
-                    debugPrint("Connection", ch, "Received esolve");
+                    debugPrint("Connection", ch, "Received resolve");
 #endif
                     
                     processResolveFrame(ch, flag, payload, size - headerSize);

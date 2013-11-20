@@ -10,8 +10,9 @@ namespace hydna {
     class Frame {
     public:
 
-        static const int HEADER_SIZE = 0x07;
+        static const int HEADER_SIZE = 0x05;
         static const unsigned int RESOLVE_CHANNEL = 0x00;
+        static const int LENGTH_OFFSET = 2;
     
         // Opcodes
         static const int KEEPALIVE = 0x00;

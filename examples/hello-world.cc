@@ -18,7 +18,7 @@ int main(int argc, const char* argv[]) {
     Channel channel;
     
     try{
-        channel.connect("hydnacc.hydna.net/hello?mytokencc", ChannelMode::READWRITE);
+        channel.connect("pipsq.com:7010", ChannelMode::READWRITE);
     }catch (std::exception& e) {
         cout << "could not connect: "<< e.what() << endl;
     }
@@ -33,7 +33,7 @@ int main(int argc, const char* argv[]) {
         cout << message << endl;
     }
     
-    string str = "Hello World C++";
+    string str = "Hello World C++ from isak to gurra";
 
     channel.writeString(str);
 
@@ -53,6 +53,7 @@ int main(int argc, const char* argv[]) {
             channel.checkForChannelError();
         }
     }
+    
     channel.close();
 }
 

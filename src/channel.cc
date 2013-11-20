@@ -303,8 +303,9 @@ namespace hydna {
             destroy(error);
             return;
         }
-
-        frame = new Frame(m_ch, Frame::SIGNAL, Frame::SIG_END);
+        
+        
+        frame = new Frame(m_ch, ContentType::UTF8, Frame::SIGNAL, Frame::SIG_END);
       
         if (m_openRequest) {
             // Open request is not responded to yet. Wait to send ENDSIG until

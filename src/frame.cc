@@ -23,7 +23,7 @@ namespace hydna {
             throw new RangeError("Payload max limit reached.");
         }
 
-        bytes.reserve(length + HEADER_SIZE);
+        bytes.reserve((length + HEADER_SIZE + LENGTH_OFFSET));
         writeShort(length + HEADER_SIZE);
         writeUnsignedInt(ch);
         
