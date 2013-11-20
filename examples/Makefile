@@ -7,8 +7,15 @@ HDRS =
 OBJS = $(SRCS:.cc=.o)
 DOBJS= $(SRCS:.cc=DEBUG.o)
 LIBDIR = ../lib
-LIBDIRS = -L$(LIBDIR) -Wl,-R$(LIBDIR)
-                                                                                
+
+LIBDIRS = -L$(LIBDIR)
+
+UNAME := $(shell uname)
+
+ifeq ($(UNAME), Linux)
+LIBDIRS += -Wl,-R$(LIBDIR)
+endif
+                                                                            
 CXX = g++
 CXXFLAGS = -g -Wall -ansi -I../include/
 LDFLAGS = $(LIBDIRS) -lhydna -lpthread
