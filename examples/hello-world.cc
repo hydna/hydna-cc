@@ -18,7 +18,7 @@ int main(int argc, const char* argv[]) {
     Channel channel;
     
     try{
-        channel.connect("test-beta.hydna.net", ChannelMode::READWRITE);
+        channel.connect("public.hydna.net/hello", ChannelMode::READWRITEEMIT);
     }catch (std::exception& e) {
         cout << "could not connect: "<< e.what() << endl;
     }
@@ -33,25 +33,29 @@ int main(int argc, const char* argv[]) {
         cout << message << endl;
     }
     
-    string str = "Hello World C++ from isak to gurra";
+    string str = "Hello World C++";
+    
+    try{
+        channel.writeString(str);
 
-    channel.writeString(str);
-
-    for (;;) {
-        if (!channel.isDataEmpty()) {
-            ChannelData* data = channel.popData();
+        for (;;) {
+            if (!channel.isDataEmpty()) {
+                ChannelData* data = channel.popData();
             
-            const char* payload = data->getContent();
+                const char* payload = data->getContent();
 
-            for (int i=0; i < data->getSize(); i++) {
-                cout << payload[i];
+                for (int i=0; i < data->getSize(); i++) {
+                    cout << payload[i];
+                }
+
+                cout << endl;
+                break;
+            }else{
+                channel.checkForChannelError();
             }
-
-            cout << endl;
-            break;
-        }else{
-            channel.checkForChannelError();
         }
+    }catch (std::exception& e) {
+        cout << "could not write: "<< e.what() << endl;
     }
     
     channel.close();

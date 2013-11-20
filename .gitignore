@@ -2,5 +2,3 @@
 *.swp
 CHANGES
 .gitignore
-receiver
-makeall.sh

@@ -47,7 +47,7 @@ int main(int argc, const char* argv[]) {
 
         Channel channel;
         try{
-            channel.connect("hydnacc.hydna.net/hello", ChannelMode::READWRITE);
+            channel.connect("public.hydna.net/speed", ChannelMode::READWRITE);
         }catch (std::exception& e) {
             cout << "could not connect: "<< e.what() << endl;
         }

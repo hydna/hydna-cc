@@ -17,7 +17,7 @@ using namespace std;
 int main(int argc, const char* argv[]) {
     Channel channel;
     try{
-        channel.connect("hydnacc.hydna.net/hello", ChannelMode::READWRITE);
+        channel.connect("public.hydna.net/hello", ChannelMode::READWRITE);
     }catch (std::exception& e) {
         cout << "could not connect: "<< e.what() << endl;
     }
@@ -25,7 +25,7 @@ int main(int argc, const char* argv[]) {
     Channel channel2;
     
     try{
-        channel2.connect("hydnacc.hydna.net/", ChannelMode::READWRITE);
+        channel2.connect("public.hydna.net/hello2", ChannelMode::READWRITE);
     }catch (std::exception& e) {
         cout << "could not connect: "<< e.what() << endl;
     }
@@ -40,39 +40,44 @@ int main(int argc, const char* argv[]) {
         sleep(1);
     }
 
-    channel.writeString("Hello world from c++ channel /cc");
-    channel2.writeString("Hello world from c++ channel /cc2");
+    channel.writeString("Hello world from c++ channel /hello");
+    channel2.writeString("Hello world from c++ channel /hello2");
+    
+    try{
+        for (;;) {
+            if (!channel.isDataEmpty()) {
+                ChannelData* data = channel.popData();
+                const char* payload = data->getContent();
 
-    for (;;) {
-        if (!channel.isDataEmpty()) {
-            ChannelData* data = channel.popData();
-            const char* payload = data->getContent();
+                for (int i=0; i < data->getSize(); i++) {
+                    cout << payload[i];
+                }
 
-            for (int i=0; i < data->getSize(); i++) {
-                cout << payload[i];
+                cout << endl;
+                break;
+            } else {
+                channel.checkForChannelError();
             }
-
-            cout << endl;
-            break;
-        } else {
-            channel.checkForChannelError();
         }
-    }
-    for (;;) {
-        if (!channel2.isDataEmpty()) {
-            ChannelData* data = channel2.popData();
-            const char* payload = data->getContent();
+        for (;;) {
+            if (!channel2.isDataEmpty()) {
+                ChannelData* data = channel2.popData();
+                const char* payload = data->getContent();
 
-            for (int i=0; i < data->getSize(); i++) {
-                cout << payload[i];
+                for (int i=0; i < data->getSize(); i++) {
+                    cout << payload[i];
+                }
+
+                cout << endl;
+                break;
+            } else {
+                channel2.checkForChannelError();
             }
-
-            cout << endl;
-            break;
-        } else {
-            channel2.checkForChannelError();
         }
+    }catch (std::exception& e) {
+        cout << "could not send to multiple channels: "<< e.what() << endl;
     }
+    
     channel.close();
     channel2.close();
 }
