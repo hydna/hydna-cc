@@ -18,7 +18,7 @@ int main(int argc, const char* argv[]) {
     Channel channel;
     
     try{
-        channel.connect("pipsq.com:7010", ChannelMode::READWRITE);
+        channel.connect("test-beta.hydna.net", ChannelMode::READWRITE);
     }catch (std::exception& e) {
         cout << "could not connect: "<< e.what() << endl;
     }

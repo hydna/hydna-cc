@@ -36,15 +36,12 @@ namespace hydna {
         static const int FLAG_BITMASK = 0x07;
 
         static const int OP_BITPOS = 3;
-        //static const int OP_BITMASK = (0x7 << OP_BITPOS);
         static const int OP_BITMASK = ((1 << 3) - 1); 
 
         static const int CTYPE_BITPOS = 6;
         static const int CTYPE_BITMASK = (0x1 << CTYPE_BITPOS);       
         
-        // Upper payload limit (10kb)
-        //static const unsigned int PAYLOAD_MAX_LIMIT = 10 * 1024;
-        static const unsigned int PAYLOAD_MAX_LIMIT = 0xFFFFFF - HEADER_SIZE;
+        static const unsigned int PAYLOAD_MAX_LIMIT = 0xFFFF - HEADER_SIZE;
 
         Frame(unsigned int ch,
                 unsigned int ctype=0,

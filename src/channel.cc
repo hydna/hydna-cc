@@ -113,9 +113,7 @@ namespace hydna {
         }
         pthread_mutex_unlock(&m_connectMutex);
 
-        if (mode == 0x04 ||
-                mode < ChannelMode::READ || 
-                mode > ChannelMode::READWRITEEMIT) {
+        if (mode > ChannelMode::READWRITEEMIT) {
             throw Error("Invalid channel mode");
         }
       
