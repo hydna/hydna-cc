@@ -6,13 +6,16 @@ SRCS = hello-world.cc hello-world-binary.cc signals.cc listener.cc speed-test.cc
 HDRS = 
 OBJS = $(SRCS:.cc=.o)
 DOBJS= $(SRCS:.cc=DEBUG.o)
-
+LIBDIR = ../lib
+LIBDIRS = -L$(LIBDIR) -Wl,-R$(LIBDIR)
+                                                                                
 CXX = g++
 CXXFLAGS = -g -Wall -ansi -I../include/
-LDFLAGS = -L../lib -lhydna -lpthread
-DEBUGLDFLAGS = -L../lib -lhydnad -lpthread
+LDFLAGS = $(LIBDIRS) -lhydna -lpthread
+DEBUGLDFLAGS = $(LIBDIRS) -lhydnad -lpthread
 TARGET = $(OBJS:.o=)
 DEBUGTARGET = $(DOBJS:DEBUG.o=DEBUG)
+
 
 all: $(TARGET)
 
