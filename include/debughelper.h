@@ -4,5 +4,6 @@
 #include <iostream>
 
 void debugPrint(std::string c, unsigned int ch, std::string msg);
+void show_binary(unsigned int u);
 
 #endif

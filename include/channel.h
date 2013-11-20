@@ -120,8 +120,9 @@ namespace hydna {
         void writeBytes(const char* data,
                                 unsigned int offset,
                                 unsigned int length,
-                                unsigned int priority=0,
-                                unsigned int ctype=ContentType::BINARY);
+                                unsigned int ctype=ContentType::BINARY,
+                                unsigned int priority=0
+                                );
 
         /**
          *  Sends string data to the channel.

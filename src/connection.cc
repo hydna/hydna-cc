@@ -12,13 +12,13 @@
 #include <pthread.h>
 
 #include "connection.h"
-#include "frame.h";
-#include "openrequest.h";
-#include "channel.h";
-#include "channeldata.h";
+#include "frame.h"
+#include "openrequest.h"
+#include "channel.h"
+#include "channeldata.h"
 #include "channelerror.h"
-#include "channelsignal.h";
-#include "url.h";
+#include "channelsignal.h"
+#include "url.h"
 
 #ifdef HYDNADEBUG
 #include "debughelper.h"
@@ -652,8 +652,12 @@ namespace hydna {
             ch = ntohl(*(unsigned int*)&header[2]);
             
             ctype = header[6] >> Frame::CTYPE_BITPOS;
-            op = header[6] >> Frame::OP_BITPOS;
+            //op = header[6] >> Frame::OP_BITPOS;
+            //op = TAKE_N_BITS_FROM(header[6], 3, 3);
+            op = (header[6] >> Frame::OP_BITPOS) & Frame::OP_BITMASK;
             flag = header[6] & 7;
+            
+            cout << "op:" << op << endl;
             
 #ifdef HYDNADEBUG
             ostringstream oss;

@@ -8,6 +8,8 @@
 #include "openrequest.h"
 #include "channelerror.h"
 
+#define TAKE_N_BITS_FROM(b, p, n) ((b) >> (p)) & ((1 << (n)) - 1);
+
 namespace hydna {
     class Frame;
     class Channel;

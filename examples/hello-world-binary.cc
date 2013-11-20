@@ -18,7 +18,7 @@ int main(int argc, const char* argv[]) {
     Channel channel;
     
     try{
-        channel.connect("public.hydna.net/cc", ChannelMode::READWRITE);
+        channel.connect("hydnacc.hydna.net/hello", ChannelMode::READWRITE);
     }catch (std::exception& e) {
         cout << "could not connect: "<< e.what() << endl;
     }
@@ -35,7 +35,7 @@ int main(int argc, const char* argv[]) {
     
     std::string value = "Hello World";
     
-    channel.writeBytes(value.data(), 0, value.length());
+    channel.writeBytes(value.data(), 0, value.length(), ContentType::BINARY);
 
     for (;;) {
         if (!channel.isDataEmpty()) {

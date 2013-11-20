@@ -19,3 +19,13 @@ void debugPrint(string c, unsigned int ch, string msg) {
     cout << ": " << msg << endl;    
 }
 
+void show_binary(unsigned int u) { 
+  int t; 
+ 
+  for(t=128; t>0; t = t/2) 
+    if(u & t) cout << "1 "; 
+    else cout << "0 "; 
+ 
+  cout << "\n"; 
+}
+

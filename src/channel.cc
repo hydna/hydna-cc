@@ -204,8 +204,9 @@ namespace hydna {
     void Channel::writeBytes(const char* data,
                             unsigned int offset,
                             unsigned int length,
-                            unsigned int priority,
-                            unsigned int ctype)
+                            unsigned int ctype,
+                            unsigned int priority
+                            )
     {
         bool result;
         
@@ -239,7 +240,7 @@ namespace hydna {
     
     void Channel::writeString(string const &value, unsigned int priority) {
         
-        writeBytes(value.data(), 0, value.length(), priority, ContentType::UTF8);
+        writeBytes(value.data(), 0, value.length(), ContentType::UTF8, priority);
     }
     
     void Channel::emitBytes(const char* data,

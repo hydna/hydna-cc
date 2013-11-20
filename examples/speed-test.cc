@@ -47,7 +47,7 @@ int main(int argc, const char* argv[]) {
 
         Channel channel;
         try{
-            channel.connect("public.hydna.net/cc", ChannelMode::READWRITE);
+            channel.connect("hydnacc.hydna.net/hello", ChannelMode::READWRITE);
         }catch (std::exception& e) {
             cout << "could not connect: "<< e.what() << endl;
         }
@@ -60,7 +60,7 @@ int main(int argc, const char* argv[]) {
         int time = 0;
 
         if (arg.compare("receive") == 0) {
-            cout << "Receiving from /cc" << endl;
+            cout << "Receiving from /hello" << endl;
 
             for(;;) {
                 if (!channel.isDataEmpty()) {
